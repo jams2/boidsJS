@@ -7,14 +7,31 @@ body {
   background-color: black;
 }
 .container {
-
+  position: absolute;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  color: white;
+  font-size: 20px;
+}
+.container::before {
+  content: 'click in field to add sprites!';
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+}
+#stop {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1;
+  padding: 10px;
+  border-radius: 0px;
+  font-size: 20px;
+  font-weight: bold;
 }
 .sub{
   background-color: #333;
-  height: 50px;
   color: #aff;
   display: none;
-}
-.points {
-
 }

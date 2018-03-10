@@ -1,9 +1,54 @@
+const MAX_SPEED = 15;
+const MIN_SPEED = 3;
+const ACCEL = 1.03;
+
 class Point {
-  constructor(x, y, context) {
+  constructor(x, y, context, center, width, height) {
     this.x = x;
     this.y = y;
-    this.context = context;
+    this.xMax = width;
+    this.yMax = height;
+    this.speed = MIN_SPEED;
+    if (center) {
+      this.angle = this.angleInRadiansFrom(center);
+    }
+    if (context) {
+      this.context = context;
+    }
   }
+
+  angleInRadiansFrom(that) {
+    return Math.atan2(this.y - that.y, this.x - that.x);
+  }
+
+  move() {
+    if (this.y < 0) {
+      this.angle = -this.angle;
+      this.y = 0;
+      this.speed = MIN_SPEED;
+    }
+    else if (this.y > this.yMax) {
+      this.angle = -this.angle;
+      this.y = this.yMax;
+      this.speed = MIN_SPEED;
+    }
+    else if (this.x < 0) {
+      this.angle = Math.PI - this.angle;
+      this.x = 0;
+      this.speed = MIN_SPEED;
+    }
+    else if (this.x > this.xMax) {
+      this.angle = Math.PI - this.angle;
+      this.x = this.xMax;
+      this.speed = MIN_SPEED;
+    }
+    else {
+      if (this.speed < MAX_SPEED) { this.speed *= ACCEL; }
+      this.x += this.speed * Math.cos(this.angle);
+      this.y += this.speed * Math.sin(this.angle);
+    }
+  }
+
   bySlope(p, q) { 
     return this.slopeTo(p) - this.slopeTo(q); 
   }
@@ -46,8 +91,9 @@ class Point {
 class Animation {
   constructor(container) {
     this.points = [];
-    this.width = document.documentElement.clientWidth;
-    this.height = document.documentElement.clientHeight;
+    this.width = document.documentElement.clientWidth - 5;
+    this.height = document.documentElement.clientHeight - 5;
+    this.center = {'x': Math.floor(this.width/2), 'y': Math.floor(this.height/2)};
     container.innerHTML = '<canvas id="context" width="' + this.width + '" height="' + this.height + '"></canvas>';
     this.canvas = document.getElementById('context');
     this.context = this.canvas.getContext('2d'); 
@@ -56,26 +102,56 @@ class Animation {
     this.context.lineWidth = 1;
     this.canvas.addEventListener('click', function(elt){
       this.pointFromClick(elt);
+      // this.generatePoints(20, this.gaussianRandomPoint);
+    }.bind(this));
+    this.doAnim = true;
+    document.getElementById('stop').addEventListener('click', function() {
+      this.doAnim = !this.doAnim;
+      if (this.doAnim) { this.animate(); }
     }.bind(this));
   }
 
-  point(x, y) {
-    return new Point(x, y, this.context);
+  size() { return this.points.length; }
+  newPoint(x, y) {
+    return new Point(x, y, this.context, this.center, this.width, this.height);
   }
 
   pointFromClick(elt) {
-    this.points.push(this.point(elt.clientX, elt.clientY));
+    this.points.push(this.newPoint(elt.clientX, elt.clientY));
+  }
+
+  generatePoints(x, pointBuilder) {
+    for (var _ = 0; _ < x; _++)
+      this.points.push(this.gaussianRandomPoint());
+  }
+
+  static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit + 1)); }
+  static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
+  gaussianRandomPoint() { 
+    return this.newPoint(Animation.gaussianRandom(this.width), Animation.gaussianRandom(this.height)); 
+  }
+  uniformRandomPoint() { 
+    return this.newPoint(Animation.uniformRandom(this.width), 
+      Animation.uniformRandom(this.height)); 
+  }
+  // gaussian random generator from https://stackoverflow.com/a/39187274
+  static gaussianRand() {
+    var rand = 0;
+    for (var i = 0; i < 6; i += 1) { rand += Math.random(); }
+    return rand / 6;
   }
 
   animate() {
     this.points.forEach(function(point){
-      point.moveRandom();
+      point.move();
     });
     this.context.clearRect(0, 0, this.width, this.height);
     this.drawPoints();
-    window.requestAnimationFrame(function() {
-      this.animate();
-    }.bind(this));
+    if (this.doAnim) {
+      window.requestAnimationFrame(function() {
+        this.animate();
+      }.bind(this));
+    }
   }
 
   drawPoints() {
@@ -85,25 +161,9 @@ class Animation {
   }
 }
 
-// gaussian random generator from https://stackoverflow.com/a/39187274
-function gaussianRand() {
-  var rand = 0;
-  for (var i = 0; i < 6; i += 1) { rand += Math.random(); }
-  return rand / 6;
-}
-function gaussianRandom(limit) { return Math.floor(gaussianRand() * (limit + 1)); }
-function uniformRandom(limit) { return Math.floor(Math.random() * limit); }
-function gaussianRandomPoint(xLimit, yLimit) { return new Point(gaussianRandom(xLimit), gaussianRandom(yLimit)); }
-function uniformRandomPoint(xLimit, yLimit) { return new Point(uniformRandom(xLimit), uniformRandom(yLimit)); }
-function generatePoints(x, array, context, pointBuilder) {
-  for (var _ = 0; _ < x; _++)
-    array.push(pointBuilder(context.width, context.height));
-}
-
-
-
 function main() {
-  var anim = new Animation(document.getElementById('container'));
+  var container = document.getElementById('container');
+  var anim = new Animation(container);
   anim.animate();
 }
 
