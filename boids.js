@@ -1,18 +1,11 @@
-const MAX_SPEED = 2;
+const MAX_SPEED = 6;
 const MIN_SPEED = 3;
-const ACCEL = 1.1;
+const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
-const ROTATION_RATE = 0.5;
-const START_COUNT = 400;
+const ROTATION_RATE = 0.4;
+const START_COUNT = 100;
 
 // while inserting into tree, if node exists already at position, displace new node - collision detection
-
-var stopButton = document.getElementById('stop');
-document.body.onkeyup = function(e){
-    if(e.keyCode == 32){
-        stopButton.click();
-    }
-}
 
 function equalPoints(b1, b2) {
     return Math.floor(b1.x * 1000) === Math.floor(b2.x * 1000) &&
@@ -56,7 +49,10 @@ class KdTree {
             return new Node(point, _parent);
         }
         if (equalPoints(point, node.point)) {
-            // avoid collision here?
+            point.speed = MIN_SPEED;
+            if (isVertical) point.x += 2;
+            else point.y += 2;
+            this.insert(point);
             return node;
         }
         let cmp = (isVertical) ? compareDouble(point.x, node.point.x) : compareDouble(point.y, node.point.y);
@@ -73,7 +69,7 @@ class KdTree {
     getNearest(nearest, queryPoint, node, isVertical) {
         // node - next node to compare queryPoint against
         if (node === null ||
-                node.point === queryPoint && node.lb === null && node.rt === null) 
+                node.point === queryPoint && node.lb === null && node.rt === null)
             return nearest;
         if (compareDouble(distanceSquared(node.point, queryPoint), distanceSquared(nearest, queryPoint)) < 0)
             nearest = node.point;
@@ -131,30 +127,44 @@ class Point {
     getSpeed() { return this.speed; }
 
     move(centerOfMass) {
-        if (this.y <= 0) this.y = this.width - 1;
-        else if (this.y >= this.width) this.y = 1;
-        else if (this.x <= 0) this.x = this.height - 1;
-        else if (this.x >= this.height) this.x = 1;
-        if (this.speed < MAX_SPEED) { this.speed *= ACCEL; }
-        else if (this.speed < MIN_SPEED) { this.speed = MIN_SPEED; }
-        if (this.nearest) {
+        if (this.y <= 0) this.y = this.height - 1;
+        else if (this.y >= this.height) this.y = 1;
+        else if (this.x <= 0) this.x = this.width - 1;
+        else if (this.x >= this.width) this.x = 1;
+        if (this.nearest && document.querySelector('#collision-opt').checked) {
             let rot = (compareDouble(this.rotation, this.nearest.rotation) >= 0) ? this.rotation : this.nearest.rotation;
-            this.rotation = (2 * Math.PI) % (rot + Math.PI);
+            this.rotation = ((2 * Math.PI) % (rot + Math.PI)) * 0.9;
         }
-        this.rotation = (2 * Math.PI) % (this.rotation + centerOfMass.angleInRadiansFrom(this));
+        if (document.querySelector('#fly-opt').checked)
+//            this.rotation = (2 * Math.PI) % (this.rotation + centerOfMass.angleInRadiansFrom(this));
+        this.rotation = this.rotateToCenter(centerOfMass);
+//        this.rotation = centerOfMass.angleInRadiansFrom(this);
+        if (this.speed < MAX_SPEED) this.speed *= ACCEL;
+        else if (this.speed > MAX_SPEED) this.speed = MAX_SPEED;
+        else if (this.speed < MIN_SPEED) this.speed = MIN_SPEED;
         this.x += this.speed * Math.cos(this.rotation);
         this.y += this.speed * Math.sin(this.rotation);
     }
 
-    static updateRotationToCenterOfMass(point, centerOfMass) {
-        let rotationToCenter = centerOfMass.angleInRadiansFrom(point);
-        let rotationDiffA = point.rotation - rotationToCenter;
-        let rotationDiffB = 2 * Math.PI - point.rotation + rotationToCenter;
-        let rotationDiff = (rotationDiffA > rotationDiffB) ? rotationDiffB : rotationDiffA;
-        return 2 * rotationDiff * ROTATION_RATE;
+    rotateToCenter(centerOfMass) {
+        let rotationToCenter = centerOfMass.angleInRadiansFrom(this);
+        let rotation, dR;
+        if (compareDouble(rotationToCenter, this.rotation) >= 0) {
+            dR = (rotationToCenter - this.rotation);
+            rotation = rotationToCenter - (dR * ROTATION_RATE);
+        }
+        else {
+            dR = (this.rotation - rotationToCenter);
+            rotation = this.rotation - (dR * ROTATION_RATE);
+        }
+        let decel = this.rotation / rotation / 100;
+        //this.speed = MAX_SPEED - (MAX_SPEED-MIN_SPEED) * (2*Math.PI/dR/100);
+        if (compareDouble(rotation, 0) < 0) return 2*Math.PI - rotation;
+        else return rotation;
     }
-    bySlope(p, q) { 
-        return this.slopeTo(p) - this.slopeTo(q); 
+
+    bySlope(p, q) {
+        return this.slopeTo(p) - this.slopeTo(q);
     }
     compareTo(that) {
         if (this.y < that.y) return -1;
@@ -169,11 +179,11 @@ class Point {
         else if (this.x == that.x) return Infinity;
         else return (that.y - this.y) / (that.x - this.x);
     }
-    draw() { 
-        this.context.fillRect(this.x, this.y, 5, 5); 
+    draw() {
+        this.context.fillRect(this.x, this.y, 5, 5);
     }
     moveRandom() {
-        if (this.x == 0) { 
+        if (this.x == 0) {
             this.x = 1;
         } else if (this.x == this.context.width) {
             this.x -= 1;
@@ -192,22 +202,22 @@ class Point {
     }
 }
 
-function drawCenterOfMass(context, point) { 
+function drawCenterOfMass(context, point) {
     context.fillStyle = 'rgb(255, 0, 0)';
-    context.fillRect(point.x, point.y, 15, 15); 
+    context.fillRect(point.x, point.y, 15, 15);
     context.fillStyle = 'rgb(200, 255, 255)';
 }
 
 class Animation {
     constructor(container) {
         this.points = [];
-        this.width = document.documentElement.clientWidth;
-        this.height = document.documentElement.clientHeight;
+        this.width = document.querySelector('.container').clientWidth;
+        this.height = document.querySelector('.container').clientHeight;
         this.center = {'x': Math.floor(this.width/2), 'y': Math.floor(this.height/2)};
         this.centerOfMass = this.newPoint(this.center.x, this.center.y);
         container.innerHTML = '<canvas id="context" width="' + this.width + '" height="' + this.height + '"></canvas>';
         this.canvas = document.getElementById('context');
-        this.context = this.canvas.getContext('2d'); 
+        this.context = this.canvas.getContext('2d');
         this.context.fillStyle = 'rgb(200, 255, 255)';
         this.context.strokeStyle = '#ff0000';
         this.context.lineWidth = 1;
@@ -239,12 +249,12 @@ class Animation {
 
     static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit + 1)); }
     static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
-    gaussianRandomPoint() { 
-        return this.newPoint(Animation.gaussianRandom(this.width), Animation.gaussianRandom(this.height)); 
+    gaussianRandomPoint() {
+        return this.newPoint(Animation.gaussianRandom(this.width), Animation.gaussianRandom(this.height));
     }
-    uniformRandomPoint() { 
-        return this.newPoint(Animation.uniformRandom(this.width), 
-            Animation.uniformRandom(this.height)); 
+    uniformRandomPoint() {
+        return this.newPoint(Animation.uniformRandom(this.width),
+            Animation.uniformRandom(this.height));
     }
     // gaussian random generator from https://stackoverflow.com/a/39187274
     static gaussianRand() {
@@ -276,7 +286,7 @@ class Animation {
         let tree = new KdTree();
         this.points.forEach(function(point){
             //      if (this.size() > 0) {
-            //        Animation.updateRotationToCenterOfMass(point, this.centerOfMass);
+            //        Animation.rotateToCenter(point, this.centerOfMass);
             //      }
             point.move(this.centerOfMass);
             tree.insert(point);
@@ -285,9 +295,9 @@ class Animation {
         this.drawPoints();
         this.points.forEach(point=>{
             point.nearest = tree.getNearest(tree.root.point, point, tree.root, true);
-            //this.drawLine(point.nearest, point);
+            if (document.querySelector('#neighbour-opt').checked) this.drawLine(point.nearest, point);
         });
-        //drawCenterOfMass(this.context, this.getAveragePosition());
+        if (document.querySelector('#center-opt').checked) drawCenterOfMass(this.context, this.getAveragePosition());
         tree = null;
         if (this.doAnim) {
             window.requestAnimationFrame(function() {
@@ -295,11 +305,11 @@ class Animation {
             }.bind(this));
         }
     }
-    static updateRotationToCenterOfMass(point, centerOfMass) {
+    static rotateToCenter(point, centerOfMass) {
         var rotationToCenter = centerOfMass.angleInRadiansFrom(point);
-        var rotationDiffA = point.getRotation() - rotationToCenter;
-        var rotationDiffB = 2 * Math.PI - point.getRotation() + rotationToCenter;
-        var rotationDiff = (rotationDiffA > rotationDiffB) ? rotationDiffB : rotationDiffA;
+        var dRotA = point.getRotation() - rotationToCenter;
+        var dRotB = 2 * Math.PI - point.getRotation() + rotationToCenter;
+        var rotationDiff = (dRotA > dRotB) ? dRotB : dRotA;
         point.updateRotation(2 * rotationDiff * ROTATION_RATE);
         point.updateSpeed(point.getSpeed() + rotationDiff * DECEL);
     }

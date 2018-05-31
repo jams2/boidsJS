@@ -59,25 +59,21 @@ body {
   color: white;
   font-size: 20px;
 }
-.container::before {
-  content: 'click in field to add sprites!';
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  color: #000;
-}
-#stop {
-  position: absolute;
-  top: 20px;
-  right: 20px;
+.overlay {
   z-index: 1;
-  padding: 10px;
-  border-radius: 0px;
-  font-size: 20px;
-  font-weight: bold;
-}
-.sub{
   background-color: #333;
-  color: #aff;
-  display: none;
+}
+.bottom-fixed {
+  position: absolute;
+  bottom: 0;
+  width: 100vw;
+  text-align: center;
+  padding: 1em 0;
+}
+.opts {
+  margin: 1em;
+  color: #AAFFFF;
+}
+button, label, input {
+  vertical-align: middle;
 }
