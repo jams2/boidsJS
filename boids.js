@@ -3,6 +3,7 @@ const MIN_SPEED = 1;
 const ACCEL = 1.1;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.5;
+const START_COUNT = 5
 
 // while inserting into tree, if node exists already at position, displace new node - collision detection
 
@@ -196,7 +197,7 @@ class Animation {
         this.context.fillStyle = 'rgb(200, 255, 255)';
         this.context.strokeStyle = '#ff0000';
         this.context.lineWidth = 1;
-        this.generatePoints(50);
+        this.generatePoints(START_COUNT);
         this.canvas.addEventListener('click', function(elt){
             this.pointFromClick(elt);
             // this.generatePoints(20, this.gaussianRandomPoint);
