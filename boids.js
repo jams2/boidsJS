@@ -26,9 +26,15 @@ function compareDouble(a, b) {
     else return 1;
 }
 
+function distanceSquared(point1, point2) {
+    let dx = Math.abs(point1.x - point2.x);
+    let dy = Math.abs(point1.y - point2.y);
+    return Math.pow(dx, 2) + Math.pow(dy, 2);
+}
+
 class Node {
-    constructor(boid, _parent) {
-        this.boid = boid;
+    constructor(point, _parent) {
+        this.point = point;
         this._parent = _parent;
         this.lb = null;
         this.rt = null;
@@ -40,80 +46,96 @@ class KdTree {
         this.size = 0;
         this.root = null;
     }
-    insert(boid) {
-        root = put(root, boid, null, true);
+    insert(point) {
+        this.root = this.put(this.root, point, null, true);
     }
-    put(node, boid, _parent, isVertical) {
+    put(node, point, _parent, isVertical) {
         if (node === null) {
-            size++;
-            return new Node(boid, _parent);
+            this.size++;
+            return new Node(point, _parent);
         }
-        if (equalPoints(boid, node.boid)) {
+        if (equalPoints(point, node.point)) {
             // avoid collision here?
             return node;
         }
-        let cmp = (isVertical) ? compareDouble(boid.x, node.boid.x) : compareDouble(boid.y, node.boid.y);
+        let cmp = (isVertical) ? compareDouble(point.x, node.point.x) : compareDouble(point.y, node.point.y);
         switch (cmp) {
             case -1:
-                node.lb = put(node.lb, boid, node, !isVertical);
+                node.lb = this.put(node.lb, point, node, !isVertical);
                 break;
             default:
-                node.rt = put(node.rt, boid, node, !isVertical);
+                node.rt = this.put(node.rt, point, node, !isVertical);
                 break;
         }
         return node;
     }
+    getNearest(nearest, queryPoint, node, isVertical) {
+        // node - next node to compare queryPoint against
+        if (node === null ||
+                node.point === queryPoint && node.lb === null && node.rt === null) 
+            return nearest;
+        if (compareDouble(distanceSquared(node.point, queryPoint), distanceSquared(nearest, queryPoint)) < 0)
+            nearest = node.point;
+        let cmp = (isVertical) ? compareDouble(node.point.x, queryPoint.x) : compareDouble(node.point.y, queryPoint.y);
+        // go down the branch closer to the query
+        let next;
+        switch(cmp) {
+            case 1:
+                next = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
+                nearest = (next === queryPoint) ? nearest : next;
+                // if nearest returned is greater than dist to current node, check the other branch
+                if (compareDouble(distanceSquared(nearest, queryPoint),
+                        this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
+                    next = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
+                    nearest = (next === queryPoint) ? nearest : next;
+                }
+                break;
+            default:
+                next = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
+                nearest = (next === queryPoint) ? nearest : next;
+                if (compareDouble(distanceSquared(nearest, queryPoint),
+                        this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
+                    next = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
+                    nearest = (next === queryPoint) ? nearest : next;
+                }
+                break;
+        }
+        return nearest;
+    }
+    otherBranchDistSquared(nearest, node, vertical) {
+        let distance;
+        if (vertical) distance = Math.abs(node.point.x - nearest.x);
+        else distance = Math.abs(node.point.y - nearest.y);
+        return distance * distance;
+    }
 }
 
-class Boid {
-    constructor(x, y, context, center, ) {
+class Point {
+    constructor(x, y, context, center, width, height) {
         this.x = x;
         this.y = y;
+        this.width = width;
+        this.height = height;
         this.speed = MIN_SPEED;
-        if (center) {
-            this.rotation = this.angleInRadiansFrom(center);
-        }
-        if (context) {
-            this.context = context;
-        }
+        this.rotation = this.angleInRadiansFrom(center);
+        this.context = context;
     }
-
     angleInRadiansFrom(that) {
         return Math.atan2(this.y - that.y, this.x - that.x);
     }
-
     updateSpeed(x) { this.speed = x; }
     updateRotation(x) { this.rotation = x; }
     getRotation() { return this.rotation; }
     getSpeed() { return this.speed; }
-
     move() {
-        if (this.y < 0) {
-            this.rotation = -this.rotation;
-            this.y = 0;
-            this.speed = MIN_SPEED;
-        }
-        else if (this.y > this.context.height) {
-            this.rotation = -this.rotation;
-            this.y = this.context.height;
-            this.speed = MIN_SPEED;
-        }
-        else if (this.x < 0) {
-            this.rotation = Math.PI - this.rotation;
-            this.x = 0;
-            this.speed = MIN_SPEED;
-        }
-        else if (this.x > this.context.width) {
-            this.rotation = Math.PI - this.rotation;
-            this.x = this.context.width;
-            this.speed = MIN_SPEED;
-        }
-        else {
-            if (this.speed < MAX_SPEED) { this.speed *= ACCEL; }
-            else if (this.speed < MIN_SPEED) { this.speed = MIN_SPEED; }
-            this.x += this.speed * Math.cos(this.rotation);
-            this.y += this.speed * Math.sin(this.rotation);
-        }
+        if (this.y <= 0) this.y = this.width - 1;
+        else if (this.y >= this.width) this.y = 1;
+        else if (this.x <= 0) this.x = this.height - 1;
+        else if (this.x >= this.height) this.x = 1;
+        if (this.speed < MAX_SPEED) { this.speed *= ACCEL; }
+        else if (this.speed < MIN_SPEED) { this.speed = MIN_SPEED; }
+        this.x += this.speed * Math.cos(this.rotation);
+        this.y += this.speed * Math.sin(this.rotation);
     }
 
     bySlope(p, q) { 
@@ -164,20 +186,20 @@ function drawCenterOfMass(context, point) {
 class Animation {
     constructor(container) {
         this.points = [];
-        this.width = document.documentElement.clientWidth - 5;
-        this.height = document.documentElement.clientHeight - 5;
+        this.width = document.documentElement.clientWidth;
+        this.height = document.documentElement.clientHeight;
         this.center = {'x': Math.floor(this.width/2), 'y': Math.floor(this.height/2)};
-        this.centerOfMass = this.newBoid(this.center.x, this.center.y);
+        this.centerOfMass = this.newPoint(this.center.x, this.center.y);
         container.innerHTML = '<canvas id="context" width="' + this.width + '" height="' + this.height + '"></canvas>';
         this.canvas = document.getElementById('context');
         this.context = this.canvas.getContext('2d'); 
         this.context.fillStyle = 'rgb(200, 255, 255)';
         this.context.strokeStyle = '#ff0000';
         this.context.lineWidth = 1;
-        this.generateBoids(3000);
+        this.generatePoints(50);
         this.canvas.addEventListener('click', function(elt){
             this.pointFromClick(elt);
-            // this.generateBoids(20, this.gaussianRandomBoid);
+            // this.generatePoints(20, this.gaussianRandomPoint);
         }.bind(this));
         this.doAnim = true;
         document.getElementById('stop').addEventListener('click', function() {
@@ -187,26 +209,26 @@ class Animation {
     }
 
     size() { return this.points.length; }
-    newBoid(x, y) {
-        return new Boid(x, y, this.context, this.center, this.width, this.height);
+    newPoint(x, y) {
+        return new Point(x, y, this.context, this.center, this.width, this.height);
     }
 
     pointFromClick(elt) {
-        this.points.push(this.newBoid(elt.clientX, elt.clientY));
+        this.points.push(this.newPoint(elt.clientX, elt.clientY));
     }
 
-    generateBoids(x) {
+    generatePoints(x) {
         for (var _ = 0; _ < x; _++)
-            this.points.push(this.gaussianRandomBoid());
+            this.points.push(this.gaussianRandomPoint());
     }
 
     static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit + 1)); }
     static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
-    gaussianRandomBoid() { 
-        return this.newBoid(Animation.gaussianRandom(this.width), Animation.gaussianRandom(this.height)); 
+    gaussianRandomPoint() { 
+        return this.newPoint(Animation.gaussianRandom(this.width), Animation.gaussianRandom(this.height)); 
     }
-    uniformRandomBoid() { 
-        return this.newBoid(Animation.uniformRandom(this.width), 
+    uniformRandomPoint() { 
+        return this.newPoint(Animation.uniformRandom(this.width), 
             Animation.uniformRandom(this.height)); 
     }
     // gaussian random generator from https://stackoverflow.com/a/39187274
@@ -215,7 +237,6 @@ class Animation {
         for (var i = 0; i < 6; i += 1) { rand += Math.random(); }
         return rand / 6;
     }
-
     getAveragePosition() {
         var sumX = 0;
         var sumY = 0;
@@ -224,36 +245,40 @@ class Animation {
             sumX += this.points[i].x;
             sumY += this.points[i].y;
         }
-        return this.newBoid(Math.floor(sumX/len), Math.floor(sumY/len));
+        return this.newPoint(Math.floor(sumX/len), Math.floor(sumY/len));
     }
-
     isOutOfBounds(point) {
         return (point.x >= this.width || point.x <= 0 || point.y >= this.height || point.y <= 0);
     }
-
     animate() {
         //    if (this.size() > 0 && !this.isOutOfBounds(this.centerOfMass)) {
         //      this.centerOfMass = this.getAveragePosition();
         //    }
         //    else if (this.isOutOfBounds(this.centerOfMass)) {
-        //      this.centerOfMass = this.newBoid(this.center.x, this.center.y);
+        //      this.centerOfMass = this.newPoint(this.center.x, this.center.y);
         //    }
+        let tree = new KdTree();
         this.points.forEach(function(point){
             //      if (this.size() > 0) {
             //        Animation.updateRotationToCenterOfMass(point, this.centerOfMass);
             //      }
             point.move();
+            tree.insert(point);
         }.bind(this));
         this.context.clearRect(0, 0, this.width, this.height);
-        this.drawBoids();
+        this.drawPoints();
+        this.points.forEach(point=>{
+            let nearest = tree.getNearest(tree.root.point, point, tree.root, true);
+            this.drawLine(nearest, point);
+        });
         drawCenterOfMass(this.context, this.getAveragePosition());
+        tree = null;
         if (this.doAnim) {
             window.requestAnimationFrame(function() {
                 this.animate();
             }.bind(this));
         }
     }
-
     static updateRotationToCenterOfMass(point, centerOfMass) {
         var rotationToCenter = centerOfMass.angleInRadiansFrom(point);
         var rotationDiffA = point.getRotation() - rotationToCenter;
@@ -262,11 +287,16 @@ class Animation {
         point.updateRotation(2 * rotationDiff * ROTATION_RATE);
         point.updateSpeed(point.getSpeed() + rotationDiff * DECEL);
     }
-
-    drawBoids() {
+    drawPoints() {
         this.points.forEach(function(point) {
             point.draw();
         });
+    }
+    drawLine(b1, b2) {
+        this.context.beginPath();
+        this.context.moveTo(b1.x, b1.y);
+        this.context.lineTo(b2.x, b2.y);
+        this.context.stroke();
     }
 }
 
