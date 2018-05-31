@@ -1,9 +1,9 @@
 const MAX_SPEED = 2;
-const MIN_SPEED = 1;
+const MIN_SPEED = 3;
 const ACCEL = 1.1;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.5;
-const START_COUNT = 5
+const START_COUNT = 400;
 
 // while inserting into tree, if node exists already at position, displace new node - collision detection
 
@@ -117,6 +117,7 @@ class Point {
         this.y = y;
         this.width = width;
         this.height = height;
+        this.nearest = null;
         this.speed = MIN_SPEED;
         this.rotation = this.angleInRadiansFrom(center);
         this.context = context;
@@ -128,17 +129,30 @@ class Point {
     updateRotation(x) { this.rotation = x; }
     getRotation() { return this.rotation; }
     getSpeed() { return this.speed; }
-    move() {
+
+    move(centerOfMass) {
         if (this.y <= 0) this.y = this.width - 1;
         else if (this.y >= this.width) this.y = 1;
         else if (this.x <= 0) this.x = this.height - 1;
         else if (this.x >= this.height) this.x = 1;
         if (this.speed < MAX_SPEED) { this.speed *= ACCEL; }
         else if (this.speed < MIN_SPEED) { this.speed = MIN_SPEED; }
+        if (this.nearest) {
+            let rot = (compareDouble(this.rotation, this.nearest.rotation) >= 0) ? this.rotation : this.nearest.rotation;
+            this.rotation = (2 * Math.PI) % (rot + Math.PI);
+        }
+        this.rotation = (2 * Math.PI) % (this.rotation + centerOfMass.angleInRadiansFrom(this));
         this.x += this.speed * Math.cos(this.rotation);
         this.y += this.speed * Math.sin(this.rotation);
     }
 
+    static updateRotationToCenterOfMass(point, centerOfMass) {
+        let rotationToCenter = centerOfMass.angleInRadiansFrom(point);
+        let rotationDiffA = point.rotation - rotationToCenter;
+        let rotationDiffB = 2 * Math.PI - point.rotation + rotationToCenter;
+        let rotationDiff = (rotationDiffA > rotationDiffB) ? rotationDiffB : rotationDiffA;
+        return 2 * rotationDiff * ROTATION_RATE;
+    }
     bySlope(p, q) { 
         return this.slopeTo(p) - this.slopeTo(q); 
     }
@@ -258,21 +272,22 @@ class Animation {
         //    else if (this.isOutOfBounds(this.centerOfMass)) {
         //      this.centerOfMass = this.newPoint(this.center.x, this.center.y);
         //    }
+        this.centerOfMass = this.getAveragePosition();
         let tree = new KdTree();
         this.points.forEach(function(point){
             //      if (this.size() > 0) {
             //        Animation.updateRotationToCenterOfMass(point, this.centerOfMass);
             //      }
-            point.move();
+            point.move(this.centerOfMass);
             tree.insert(point);
         }.bind(this));
         this.context.clearRect(0, 0, this.width, this.height);
         this.drawPoints();
         this.points.forEach(point=>{
-            let nearest = tree.getNearest(tree.root.point, point, tree.root, true);
-            this.drawLine(nearest, point);
+            point.nearest = tree.getNearest(tree.root.point, point, tree.root, true);
+            //this.drawLine(point.nearest, point);
         });
-        drawCenterOfMass(this.context, this.getAveragePosition());
+        //drawCenterOfMass(this.context, this.getAveragePosition());
         tree = null;
         if (this.doAnim) {
             window.requestAnimationFrame(function() {
