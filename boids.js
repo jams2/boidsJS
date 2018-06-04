@@ -1,9 +1,10 @@
-const MAX_SPEED = 6;
-const MIN_SPEED = 3;
+const MAX_SPEED = 5;
+const MIN_SPEED = 5;
 const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
-const START_COUNT = 100;
+const START_COUNT = 2;
+const FULL_ROT = 2 * Math.PI;
 
 // while inserting into tree, if node exists already at position, displace new node - collision detection
 
@@ -66,6 +67,9 @@ class KdTree {
         }
         return node;
     }
+    nearestNeighbour(query) {
+        return this.getNearest(this.root.point, query, tree.root, true);
+    }
     getNearest(nearest, queryPoint, node, isVertical) {
         // node - next node to compare queryPoint against
         if (node === null ||
@@ -107,16 +111,27 @@ class KdTree {
     }
 }
 
+function vReflection(rotation) {
+    if (rotation < Math.PI) return Math.PI - rotation;
+    else return FULL_ROT - rotation - Math.PI;
+}
+function hReflection(rotation) {
+    if (rotation < Math.PI) return FULL_ROT - rotation;
+    else return Math.PI - rotation - Math.Pi;
+}
+
 class Point {
     constructor(x, y, context, center, width, height) {
         this.x = x;
         this.y = y;
-        this.width = width;
-        this.height = height;
-        this.nearest = null;
-        this.speed = MIN_SPEED;
-        this.rotation = this.angleInRadiansFrom(center);
-        this.context = context;
+        if (context) {
+            this.width = width;
+            this.height = height;
+            this.nearest = null;
+            this.speed = MIN_SPEED;
+            this.rotation = this.angleInRadiansFrom(center);
+            this.context = context;
+        }
     }
     angleInRadiansFrom(that) {
         return Math.atan2(this.y - that.y, this.x - that.x);
@@ -127,18 +142,39 @@ class Point {
     getSpeed() { return this.speed; }
 
     move(centerOfMass) {
-        if (this.y <= 0) this.y = this.height - 1;
-        else if (this.y >= this.height) this.y = 1;
-        else if (this.x <= 0) this.x = this.width - 1;
-        else if (this.x >= this.width) this.x = 1;
-        if (this.nearest && document.querySelector('#collision-opt').checked) {
-            let rot = (compareDouble(this.rotation, this.nearest.rotation) >= 0) ? this.rotation : this.nearest.rotation;
-            this.rotation = ((2 * Math.PI) % (rot + Math.PI)) * 0.9;
+        if (this.y <= 10) {
+            this.rotation = hReflection(this.rotation);
+            this.y = 20;
+            if (this.rotation < 0)
+                console.log(this);
         }
+        else if (this.y >= this.height - 10) {
+            this.rotation = hReflection(this.rotation);
+            this.y = this.height - 20;
+            if (this.rotation < 0)
+                console.log(this);
+        }
+        if (this.x <= 10) {
+            this.rotation = vReflection(this.rotation);
+            this.x = 20;
+            if (this.rotation < 0)
+                console.log(this);
+        }
+        else if (this.x >= this.width - 10) {
+            this.rotation = vReflection(this.rotation);
+            this.x = this.width - 20;
+            if (this.rotation < 0)
+                console.log(this);
+        }
+//        if (this.nearest && document.querySelector('#collision-opt').checked) {
+//            let rot = (compareDouble(this.rotation, this.nearest.rotation) >= 0) ? this.rotation : this.nearest.rotation;
+//            this.rotation = ((2 * Math.PI) % (rot + Math.PI)) * 0.9;
+//        }
         if (document.querySelector('#fly-opt').checked)
 //            this.rotation = (2 * Math.PI) % (this.rotation + centerOfMass.angleInRadiansFrom(this));
-        this.rotation = this.rotateToCenter(centerOfMass);
+//        this.rotation = this.rotateToCenter(centerOfMass);
 //        this.rotation = centerOfMass.angleInRadiansFrom(this);
+        //if (this.nearest && distanceSquared(this, this.nearest) < this.width*this.width/20) this.rotation = 2*Math.PI % (this.rotation + (this.rotation-this.nearest.rotation)/2);
         if (this.speed < MAX_SPEED) this.speed *= ACCEL;
         else if (this.speed > MAX_SPEED) this.speed = MAX_SPEED;
         else if (this.speed < MIN_SPEED) this.speed = MIN_SPEED;
@@ -335,3 +371,5 @@ function main() {
 window.addEventListener("load", function() {
     main();
 });
+
+export equalPoints, compareDouble, distanceSquared, Node, KdTree, Point;
