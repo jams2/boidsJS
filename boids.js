@@ -3,7 +3,7 @@ const MIN_SPEED = 5;
 const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
-const START_COUNT = 2;
+const START_COUNT = 500;
 const FULL_ROT = 2 * Math.PI;
 
 // while inserting into tree, if node exists already at position, displace new node - collision detection
@@ -325,12 +325,17 @@ class Animation {
             //        Animation.rotateToCenter(point, this.centerOfMass);
             //      }
             point.move(this.centerOfMass);
+            point.nearest = null;
             tree.insert(point);
         }.bind(this));
         this.context.clearRect(0, 0, this.width, this.height);
-        this.drawPoints();
         this.points.forEach(point=>{
-            point.nearest = tree.getNearest(tree.root.point, point, tree.root, true);
+            point.draw();
+            if (point.nearest === null) {
+                let nearest = tree.nearestNeighbour(point);
+                nearest.nearest = point;
+                point.nearest = nearest;
+            }
             if (document.querySelector('#neighbour-opt').checked) this.drawLine(point.nearest, point);
         });
         if (document.querySelector('#center-opt').checked) drawCenterOfMass(this.context, this.getAveragePosition());
@@ -372,4 +377,3 @@ window.addEventListener("load", function() {
     main();
 });
 
-export equalPoints, compareDouble, distanceSquared, Node, KdTree, Point;
