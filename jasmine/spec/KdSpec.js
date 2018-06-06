@@ -75,6 +75,19 @@ describe('Test insert method', function() {
     afterEach(function() {
         tree = null;
     });
+    it('Should increment collision counter if duplicate points inserted', function() {
+        let p = new Point(13, 21);
+        let q = new Point(13, 21);
+        let r = new Point(13, 21);
+        let s = new Point(13, 21);
+        tree.insert(p);
+        tree.insert(q);
+        expect(tree.collisions).toEqual(1);
+        tree.insert(r);
+        expect(tree.collisions).toEqual(2);
+        tree.insert(s);
+        expect(tree.collisions).toEqual(3);
+    });
     it('Should have the correct count after no insertions', function() {
         expect(tree.size).toEqual(0);
     });
@@ -144,3 +157,42 @@ describe('Test distanceSquared', function() {
         expect(distanceSquared(p, p)).toBe(0);
     });
 });
+describe('Test equalPoints to 4 decimal places', function() {
+    it('Should correctly evaluate equal points with integers', function() {
+        let p = new Point(0, 0);
+        let q = new Point(0, 0);
+        expect(equalPoints(p, q)).toBe(true);
+        p = new Point(-1, 0);
+        q = new Point(-1, 0);
+        expect(equalPoints(p, q)).toBe(true);
+        p = new Point(-1, -5);
+        q = new Point(-1, -5);
+        expect(equalPoints(p, q)).toBe(true);
+        p = new Point(1, 5);
+        q = new Point(1, 5);
+        expect(equalPoints(p, q)).toBe(true);
+    });
+    it('Should correctly evaluate equal points with floats', function() {
+        let p = new Point(0.456, 0.4569);
+        let q = new Point(0.456, 0.4569);
+        expect(equalPoints(p, q)).toBe(true);
+        p = new Point(-1.9999, 0.33334);
+        q = new Point(-1.9999, 0.33339);
+        expect(equalPoints(p, q)).toBe(true);
+        p = new Point(-1.1156, -5.11566);
+        q = new Point(-1.1156, -5.11564);
+        expect(equalPoints(p, q)).toBe(true);
+    });
+    it('Should correctly evaluate inequal points', function() {
+        let p = new Point(0.456, 0.556);
+        let q = new Point(0.456, 0.456);
+        expect(equalPoints(p, q)).toBe(false);
+        p = new Point(-1.9999, 0.3343);
+        q = new Point(-1.9993, 0.3333);
+        expect(equalPoints(p, q)).toBe(false);
+        p = new Point(-1.11556, -5.1156);
+        q = new Point(-1.1156, -5.1157);
+        expect(equalPoints(p, q)).toBe(false);
+
+    });
+})

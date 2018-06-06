@@ -1,6 +1,6 @@
-function equalPoints(b1, b2) {
-    return Math.floor(b1.x * 1000) === Math.floor(b2.x * 1000) &&
-        Math.floor(b1.y * 1000) === Math.floor(b2.y * 1000);
+function equalPoints(b10, b2) {
+    return Math.floor(b10.x * 10000) === Math.floor(b2.x * 10000) &&
+        Math.floor(b10.y * 10000) === Math.floor(b2.y * 10000);
 }
 
 
@@ -35,6 +35,7 @@ class KdTree {
     constructor() {
         this.size = 0;
         this.rootNode = null;
+        this.collisions = 0;
     }
 
     insert(point) {
@@ -60,6 +61,7 @@ class KdTree {
         }
         if (equalPoints(point, node.point[0])) {
             node.point.push(point);
+            this.collisions++;
             return node;
         }
         let cmp;
