@@ -16,6 +16,27 @@ describe('Test nearest neighbour query', function() {
         let q;
         expect(function(){tree.nearestNeighbour(q);}).toThrow('Invalid argument');
     });
+    it('A point should not be its own nearest neighbour, when that point is root', function() {
+        tree.insert(p);
+        let q = new Point(9, 9);
+        tree.insert(q);
+        expect(tree.nearestNeighbour(p)).not.toBe(p);
+    });
+    it('A point should not be its own nearest neighbour, when that point is not root', function() {
+        let q = new Point(9, 9);
+        tree.insert(q);
+        tree.insert(p);
+        expect(tree.nearestNeighbour(p)).not.toBe(p);
+    });
+    it('Should return correct neighbour when query is root, nearest is other branch to default',
+        function() {
+            tree.insert(p);
+            let q = new Point(8.5, 9); // right branch, closer
+            let r = new Point(7, 9); // left branch
+            tree.insert(q);
+            tree.insert(r);
+            expect(tree.nearestNeighbour(p)).toBe(q);
+    });
 });
 
 describe('Test insert method', function() {
@@ -24,9 +45,9 @@ describe('Test insert method', function() {
         tree = new KdTree();
     });
     afterEach(function() {
+        tree = null;
     });
-    tree = null;
-    it('Should have the correct quantity in count after no insertions', function() {
+    it('Should have the correct count after no insertions', function() {
         expect(tree.size).toEqual(0);
     });
     it('Should have the correct count after 1 insertion', function() {
@@ -47,10 +68,10 @@ describe('Test insert method', function() {
         expect(tree.size).toBe(150);
     });
     it('Should have the correct count after a large number of insertions', function() {
-        for (var i = 0; i < 1000; i++) {
+        for (var i = 0; i < 1500; i++) {
             tree.insert(new Point(Math.random, Math.random));
         }
-        expect(tree.size).toBe(1000);
+        expect(tree.size).toBe(1500);
     });
     it('Should throw error on null argument', function() {
         expect(function(){ tree.insert(null); }).toThrow('Invalid argument');
@@ -66,12 +87,13 @@ describe('Test insert method', function() {
         expect(tree.rootNode.point.length).toEqual(2);
     });
 });
+
 describe('Test constructor', function() {
     var tree;
     beforeEach(function() {
         tree = new KdTree();
     });
-    it('Should have an undefined root after construction', function() {
+    it('Should have a null root after construction and no insertions', function() {
         expect(tree.rootNode).toBe(null);
     });
     it('Should not be null after construction', function() {
@@ -81,5 +103,16 @@ describe('Test constructor', function() {
         let p = new Point(0, 0);
         tree.insert(p);
         expect(tree.rootNode.point[0]).toEqual(p);
+    });
+});
+
+describe('Test distanceSquared', function() {
+    var p = new Point(0, 0);
+    var q = new Point(1, 1);
+    var r = new Point(2, 2);
+    it('Should calculate the correct distances', function() {
+        expect(distanceSquared(p, q)).toBe(2);
+        expect(distanceSquared(p, r)).toBe(8);
+        expect(distanceSquared(p, p)).toBe(0);
     });
 });
