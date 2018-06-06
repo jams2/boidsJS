@@ -1,3 +1,5 @@
+function randInt(max) { return Math.floor(Math.random() * max); }
+
 describe('Test nearest neighbour query', function() {
     var tree;
     var p = new Point(8, 9);
@@ -28,8 +30,7 @@ describe('Test nearest neighbour query', function() {
         tree.insert(p);
         expect(tree.nearestNeighbour(p)).not.toBe(p);
     });
-    it('Should return correct neighbour when query is root, nearest is other branch to default',
-        function() {
+    it('Should return correct neighbour when query is root, nearest is right branch', function() {
             tree.insert(p);
             let q = new Point(8.5, 9); // right branch, closer
             let r = new Point(7, 9); // left branch
@@ -37,6 +38,33 @@ describe('Test nearest neighbour query', function() {
             tree.insert(r);
             expect(tree.nearestNeighbour(p)).toBe(q);
     });
+    it('Should return correct neighbour when query is root, nearest is left branch', function() {
+            tree.insert(p);
+            let q = new Point(10, 9);
+            let r = new Point(7, 9);
+            tree.insert(q);
+            tree.insert(r);
+            expect(tree.nearestNeighbour(p)).toBe(r);
+    });
+    it('Should return correct nearest neighbour in a large tree, when query is root', function() {
+        tree.insert(p);
+        for (var i = 0; i < 150; i++) {
+            tree.insert(new Point(randInt(1000), randInt(1000)));
+        }
+        let q = new Point(8.5, 9);
+        tree.insert(q);
+        expect(tree.nearestNeighbour(p)).toBe(q);
+    });
+    it('Should return correct nearest neighbour in a large tree, when query is not root', function() {
+        for (var i = 0; i < 150; i++) {
+            tree.insert(new Point(randInt(1000), randInt(1000)));
+        }
+        tree.insert(p);
+        let q = new Point(8.5, 9);
+        tree.insert(q);
+        expect(tree.nearestNeighbour(p)).toBe(q);
+    });
+    it('Should handle multiple points in same node that are nearest neighbour', function(){});
 });
 
 describe('Test insert method', function() {

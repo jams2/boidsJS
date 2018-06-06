@@ -1,5 +1,3 @@
-const MIN_SPEED = 1;
-
 function equalPoints(b1, b2) {
     return Math.floor(b1.x * 1000) === Math.floor(b2.x * 1000) &&
         Math.floor(b1.y * 1000) === Math.floor(b2.y * 1000);
@@ -40,11 +38,22 @@ class KdTree {
     }
 
     insert(point) {
+        /******************************************************************************************
+        *   Public interface to put
+        ******************************************************************************************/
         if (point === null || point === undefined) throw 'Invalid argument';
         this.rootNode = this.put(this.rootNode, point, null, true);
     }
 
     put(node, point, _parent, isVertical) {
+        /******************************************************************************************
+         *  Insert point into KdTree
+         *  node (type: Node) - current node to compare new point with
+         *  point (type: point) - new point to insert
+         *  _parent (type: Node) - parent node of current node
+         *  isVertical (type: Boolean) - whether we are dividing h or v at this
+         *      recursive level, reversed on each successive call.
+         *****************************************************************************************/
         if (node === null) {
             this.size++;
             return new Node(point, _parent);
@@ -53,7 +62,13 @@ class KdTree {
             node.point.push(point);
             return node;
         }
-        let cmp = (isVertical) ? compareDouble(point.x, node.point[0].x) : compareDouble(point.y, node.point[0].y);
+        let cmp;
+        if (isVertical) {
+            cmp = compareDouble(point.x, node.point[0].x);
+        }
+        else {
+            cmp = compareDouble(point.y, node.point[0].y);
+        }
         switch (cmp) {
             case -1:
                 node.lb = this.put(node.lb, point, node, !isVertical);
