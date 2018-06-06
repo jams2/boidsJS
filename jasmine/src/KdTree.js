@@ -13,9 +13,10 @@ function compareDouble(a, b) {
 }
 
 
-function distanceSquared(point1, point2) {
-    let dx = Math.abs(point1.x - point2.x);
-    let dy = Math.abs(point1.y - point2.y);
+function distanceSquared(p, q) {
+    if (p === q || equalPoints(p, q)) return Infinity;
+    let dx = Math.abs(p.x - q.x);
+    let dy = Math.abs(p.y - q.y);
     let result = Math.pow(dx, 2) + Math.pow(dy, 2);
     return Math.floor(result*1000)/1000;
 }
@@ -85,43 +86,32 @@ class KdTree {
     nearestNeighbour(query) {
         /******************************************************************************************
          *  Public interface for getNearest.
-         *  To avoid returning the query point if it is root, first check, then assign first
-         *      "nearest" value to rootNode.lb/rt depending on which is closer.
          *****************************************************************************************/
-        if (query === null || query === undefined) throw 'Invalid argument'; 
+        if (query === null || query === undefined) throw 'Invalid argument';
         if (this.size < 2) return null;
-        let nearest = this.rootNode.point[0];
-        let dLb, dRt;
-        if (this.rootNode.point.indexOf(query) > -1) {
-            if (this.rootNode.lb === null) {
-                nearest = this.rootNode.rt.point[0];
-            }
-            else if (this.rootNode.rt === null) {
-                nearest = this.rootNode.lb.point[0];
-            }
-            else {
-                dLb = distanceSquared(query, this.rootNode.lb.point[0]);
-                dRt = distanceSquared(query, this.rootNode.rt.point[0]);
-                nearest = (compareDouble(dLb, dRt) < 0) ? this.rootNode.lb.point[0] : this.rootNode.rt.point[0];
-            }
-        }
-        return this.getNearest(nearest, query, this.rootNode, true);
+        return this.getNearest(this.rootNode.point[0], query, this.rootNode, true);
     }
 
     getNearest(nearest, queryPoint, node, isVertical) {
         /******************************************************************************************
-         *   nearest (type: Point) - nearest point found so far
-         *   node (type: Node) - current node to compare queryPoint with
-         *   queryPoint (type: Point) - point to find nearest neighbour of
-         *   isVertical (type: Boolean) - whether we are dividing h or v at this
+         *  nearest (type: Point) - nearest point found so far
+         *  node (type: Node) - current node to compare queryPoint with
+         *  queryPoint (type: Point) - point to find nearest neighbour of
+         *  isVertical (type: Boolean) - whether we are dividing h or v at this
          *      recursive level, reversed on each successive call.
+         *  As we are finding the nearest neighbour of every point in the tree,
+         *      to avoid every query point returning itself, we set the distanceSquared 
+         *      method to return Infinity if two of the same point (either the same object 
+         *      or another object with the same coordinates) are compared.
          *****************************************************************************************/
-        if (node === null || node.point[0] === queryPoint && node.lb === null && node.rt === null)
+        if (node === null) {
             return nearest;
-        if (node.point.indexOf(queryPoint) === -1 && 
-                compareDouble(distanceSquared(node.point[0], queryPoint), distanceSquared(nearest, queryPoint)) < 0)
+        }
+        if (compareDouble(distanceSquared(node.point[0], queryPoint),
+                distanceSquared(nearest, queryPoint)) < 0) {
             nearest = node.point[0];
-        let cmp, next;
+        }
+        let cmp;
         if (isVertical) { // take lb branch if node.point is greater than query
             cmp = compareDouble(node.point[0].x, queryPoint.x);
         }
@@ -130,22 +120,18 @@ class KdTree {
         }
         switch(cmp) {
             case 1:
-                next = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
-                nearest = (next === queryPoint) ? nearest : next;
+                nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
                 // if nearest returned is greater than dist to current node, check the other branch
                 if (compareDouble(distanceSquared(nearest, queryPoint),
                         this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
-                    next = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
-                    nearest = (next === queryPoint) ? nearest : next;
+                    nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
                 }
                 break;
             default:
-                next = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
-                nearest = (next === queryPoint) ? nearest : next;
+                nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
                 if (compareDouble(distanceSquared(nearest, queryPoint),
                         this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
-                    next = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
-                    nearest = (next === queryPoint) ? nearest : next;
+                    nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
                 }
                 break;
         }
@@ -157,6 +143,68 @@ class KdTree {
         if (vertical) distance = Math.abs(node.point[0].x - nearest.x);
         else distance = Math.abs(node.point[0].y - nearest.y);
         return distance * distance;
+    }
+
+    range(rect) {
+        if (rect === null) throw 'Illegal argument';
+        let stack = [];
+        getRange(this.rootNode, stack, rect, true);
+        return stack;
+    }
+
+    getRange(node, stack, rect, isVertical) {
+        /*
+         */
+        if (node === null) return;
+        let cmp;
+        if (rect.contains(node.point[0])) {
+            node.point.forEach(p=>stack.push(p));
+            cmp = 0;
+        }
+        else if (isVertical) {
+            if (compareDouble(node.point[0].x, rect.xmin) >= 0 &&
+                    compareDouble(node.point[0].x, rect.xmin) <= 0) {
+                cmp = 0;
+            }
+            else {
+                cmp = (compareDouble(node.point[0].x, rect.xmin) < 0) ? 1 : -1;
+            }
+        }
+        else {
+            if (compareDouble(node.point[0].y, rect.ymin) >= 0 &&
+                    compareDouble(node.point[0].y, rect.ymax) <= 0) {
+                cmp = 0;
+            }
+            else {
+                cmp = (compareDouble(node.point[0].y, rect.ymin) < 0) ? 1 : -1;
+            }
+        }
+        switch (cmp) {
+            case 0:
+                getRange(node.lb, stack, rect, !isVertical);
+                getRange(node.rt, stack, rect, !isVertical);
+                break;
+            case -1:
+                getRange(node.lb, stack, rect, !isVertical);
+                break;
+            case 1:
+                getRange(node.rt, stack, rect, !isVertical);
+                break;
+        }
+    }
+}
+
+
+class Rect {
+    constructor(xmin, ymin, xmax, ymax) {
+        this.xmin = xmin;
+        this.ymin = ymin;
+        this.xmax = xmax;
+        this.ymax = ymax;
+    }
+    contains(point) {
+        return point.x >= this.xmin && point.x <= this.xmax &&
+            point.y >= this.ymin && point.y <= this.ymax;
     }
 }
 

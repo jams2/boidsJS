@@ -1,10 +1,26 @@
 function randInt(max) { return Math.floor(Math.random() * max); }
 
+describe('Test range query', function() {
+    it('Should work properly', function() {});
+});
+
 describe('Test nearest neighbour query', function() {
     var tree;
-    var p = new Point(8, 9);
+    var p;
     beforeEach(function() {
         tree = new KdTree();
+        p = new Point(8, 9);
+    });
+    it('Should handle a point with equidistant neighbours', function(){});
+    it('Should always return the correct nearest neighbour', function(){
+        let points = [];
+        for (var _ = 0; _ < 2000; _++) {
+            p = new Point(randInt(1000), randInt(1000));
+            tree.insert(p);
+        }
+        points.forEach(point=>{
+            expect(tree.nearestNeighbour(new Point(point.x+0.1, point.y+0.1))).toBe(point);
+        });
     });
     it('Should return null if querying nearest neighbour of the only inserted point', function(){
         tree.insert(p);
@@ -154,7 +170,7 @@ describe('Test distanceSquared', function() {
     it('Should calculate the correct distances', function() {
         expect(distanceSquared(p, q)).toBe(2);
         expect(distanceSquared(p, r)).toBe(8);
-        expect(distanceSquared(p, p)).toBe(0);
+        expect(distanceSquared(p, p)).toBe(Infinity);
     });
 });
 describe('Test equalPoints to 4 decimal places', function() {
