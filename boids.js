@@ -1,10 +1,11 @@
 const MAX_SPEED = 5;
-const MIN_SPEED = 5;
+const MIN_SPEED = 3;
 const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
-const START_COUNT = 5000;
+const START_COUNT = 1000;
 const FULL_ROT = 2 * Math.PI;
+const PROXIMITY = 25;
 
 function equalPoints(b10, b2) {
     return Math.floor(b10.x * 10000) === Math.floor(b2.x * 10000) &&
@@ -50,9 +51,18 @@ class KdTree {
     insert(point) {
         /******************************************************************************************
         *   Public interface to put
+        *   Takes a Point or array of Points.
         ******************************************************************************************/
         if (point === null || point === undefined) throw 'Invalid argument';
-        this.rootNode = this.put(this.rootNode, point, null, true);
+        if (Array.isArray(point)) {
+            point.forEach(p=>{
+                if (!p instanceof Point || p === null) throw 'Invalid argument';
+                this.rootNode = this.put(this.rootNode, p, null, true);
+            });
+        }
+        else {
+            this.rootNode = this.put(this.rootNode, point, null, true);
+        }
     }
 
     put(node, point, _parent, isVertical) {
@@ -80,13 +90,11 @@ class KdTree {
         else {
             cmp = compareDouble(point.y, node.point[0].y);
         }
-        switch (cmp) {
-            case -1:
-                node.lb = this.put(node.lb, point, node, !isVertical);
-                break;
-            default:
-                node.rt = this.put(node.rt, point, node, !isVertical);
-                break;
+        if (cmp === -1) {
+            node.lb = this.put(node.lb, point, node, !isVertical);
+        }
+        else {
+            node.rt = this.put(node.rt, point, node, !isVertical);
         }
         return node;
     }
@@ -126,22 +134,20 @@ class KdTree {
         else {
             cmp = compareDouble(node.point[0].y, queryPoint.y);
         }
-        switch(cmp) {
-            case 1:
-                nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
-                // if nearest returned is greater than dist to current node, check the other branch
-                if (compareDouble(distanceSquared(nearest, queryPoint),
-                        this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
-                    nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
-                }
-                break;
-            default:
+        if (cmp === 1) {
+            nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
+            // if nearest returned is greater than dist to current node, check the other branch
+            if (compareDouble(distanceSquared(nearest, queryPoint),
+                this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
                 nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
-                if (compareDouble(distanceSquared(nearest, queryPoint),
-                        this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
-                    nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
-                }
-                break;
+            }
+        }
+        else {
+            nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
+            if (compareDouble(distanceSquared(nearest, queryPoint),
+                this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
+                nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
+            }
         }
         return nearest;
     }
@@ -152,18 +158,72 @@ class KdTree {
         else distance = Math.abs(node.point[0].y - nearest.y);
         return distance * distance;
     }
+
+    range(rect) {
+        if (rect === null) throw 'Invalid argument';
+        let stack = [];
+        this.getRange(this.rootNode, stack, rect, true);
+        return stack;
+    }
+
+    getRange(node, stack, rect, isVertical) {
+        /*
+         */
+        if (node === null) return;
+        let cmp;
+        if (rect.contains(node.point[0])) {
+            node.point.forEach(p=>stack.push(p));
+            cmp = 0;
+        }
+        else if (isVertical) {
+            if (compareDouble(node.point[0].x, rect.xmin) >= 0 &&
+                    compareDouble(node.point[0].x, rect.xmin) <= 0) {
+                cmp = 0;
+            }
+            else {
+                cmp = (compareDouble(node.point[0].x, rect.xmin) < 0) ? 1 : -1;
+            }
+        }
+        else {
+            if (compareDouble(node.point[0].y, rect.ymin) >= 0 &&
+                    compareDouble(node.point[0].y, rect.ymax) <= 0) {
+                cmp = 0;
+            }
+            else {
+                cmp = (compareDouble(node.point[0].y, rect.ymin) < 0) ? 1 : -1;
+            }
+        }
+        if (cmp === 0) {
+            this.getRange(node.lb, stack, rect, !isVertical);
+            this.getRange(node.rt, stack, rect, !isVertical);
+        }
+        else if (cmp === -1) {
+            this.getRange(node.lb, stack, rect, !isVertical);
+        }
+        else {
+            this.getRange(node.rt, stack, rect, !isVertical);
+        }
+    }
 }
 
 
-function vReflection(rotation) {
-    if (rotation < Math.PI) return Math.PI - rotation;
-    else return FULL_ROT - rotation - Math.PI;
+class Rect {
+    constructor(xmin, ymin, xmax, ymax) {
+        if (xmin === undefined || xmin === null || ymin === undefined || ymin === null ||
+            xmax === undefined || xmax === null || ymax === undefined || ymax === null) {
+            throw 'Invalid argument';
+        }
+        this.xmin = xmin;
+        this.ymin = ymin;
+        this.xmax = xmax;
+        this.ymax = ymax;
+    }
+    contains(point) {
+        return point.x >= this.xmin && point.x <= this.xmax &&
+            point.y >= this.ymin && point.y <= this.ymax;
+    }
 }
 
-function hReflection(rotation) {
-    if (rotation < Math.PI) return FULL_ROT - rotation;
-    else return Math.PI - rotation - Math.Pi;
-}
 
 class Point {
     constructor(x, y, context, center, width, height) {
@@ -176,6 +236,7 @@ class Point {
             this.speed = MIN_SPEED;
             this.rotation = this.angleInRadiansFrom(center);
             this.context = context;
+            this.nextRot = this.rotation;
         }
     }
     angleInRadiansFrom(that) {
@@ -186,40 +247,34 @@ class Point {
     getRotation() { return this.rotation; }
     getSpeed() { return this.speed; }
 
-    move(centerOfMass) {
-        if (this.y <= 10) {
-            this.rotation = hReflection(this.rotation);
-            this.y = 20;
-            if (this.rotation < 0)
-                console.log(this);
+    move(nextRot) {
+        if (this. y > 10 && this.y < this.height - 10 &&
+                this. x > 10 && this.x < this.width - 10) {
+            this.rotation = this.nextRot;
+            this.nextRot = nextRot;
         }
-        else if (this.y >= this.height - 10) {
-            this.rotation = hReflection(this.rotation);
-            this.y = this.height - 20;
-            if (this.rotation < 0)
-                console.log(this);
+        else {
+            if (this.y <= 0) {
+                this.rotation = this.nextRot;
+                this.nextRot = nextRot;
+                this.y = this.height - 1;
+            }
+            else if (this.y >= this.height - 0) {
+                this.rotation = this.nextRot;
+                this.nextRot = nextRot;
+                this.y = 1;
+            }
+            if (this.x <= 0) {
+                this.rotation = this.nextRot;
+                this.nextRot = nextRot;
+                this.x = this.width - 1;
+            }
+            else if (this.x >= this.width - 0) {
+                this.rotation = this.nextRot;
+                this.nextRot = nextRot;
+                this.x = 1;
+            }
         }
-        if (this.x <= 10) {
-            this.rotation = vReflection(this.rotation);
-            this.x = 20;
-            if (this.rotation < 0)
-                console.log(this);
-        }
-        else if (this.x >= this.width - 10) {
-            this.rotation = vReflection(this.rotation);
-            this.x = this.width - 20;
-            if (this.rotation < 0)
-                console.log(this);
-        }
-//        if (this.nearest && document.querySelector('#collision-opt').checked) {
-//            let rot = (compareDouble(this.rotation, this.nearest.rotation) >= 0) ? this.rotation : this.nearest.rotation;
-//            this.rotation = ((2 * Math.PI) % (rot + Math.PI)) * 0.9;
-//        }
-        if (document.querySelector('#fly-opt').checked)
-//            this.rotation = (2 * Math.PI) % (this.rotation + centerOfMass.angleInRadiansFrom(this));
-//        this.rotation = this.rotateToCenter(centerOfMass);
-//        this.rotation = centerOfMass.angleInRadiansFrom(this);
-        //if (this.nearest && distanceSquared(this, this.nearest) < this.width*this.width/20) this.rotation = 2*Math.PI % (this.rotation + (this.rotation-this.nearest.rotation)/2);
         if (this.speed < MAX_SPEED) this.speed *= ACCEL;
         else if (this.speed > MAX_SPEED) this.speed = MAX_SPEED;
         else if (this.speed < MIN_SPEED) this.speed = MIN_SPEED;
@@ -281,6 +336,16 @@ class Point {
             this.y = Math.round(Math.random()) == 0 ? this.y + dY : this.y - dY;
         }
     }
+}
+
+function vReflection(rotation) {
+    if (rotation < Math.PI) return Math.PI - rotation;
+    else return FULL_ROT - rotation - Math.PI;
+}
+
+function hReflection(rotation) {
+    if (rotation < Math.PI) return FULL_ROT - rotation;
+    else return Math.PI - rotation - Math.Pi;
 }
 
 function drawCenterOfMass(context, point) {
@@ -358,49 +423,54 @@ class Animation {
         return (point.x >= this.width || point.x <= 0 || point.y >= this.height || point.y <= 0);
     }
     animate() {
-        //    if (this.size() > 0 && !this.isOutOfBounds(this.centerOfMass)) {
-        //      this.centerOfMass = this.getAveragePosition();
-        //    }
-        //    else if (this.isOutOfBounds(this.centerOfMass)) {
-        //      this.centerOfMass = this.newPoint(this.center.x, this.center.y);
-        //    }
-        this.centerOfMass = this.getAveragePosition();
         let tree = new KdTree();
         this.points.forEach(function(point){
-            //      if (this.size() > 0) {
-            //        Animation.rotateToCenter(point, this.centerOfMass);
-            //      }
-            point.move(this.centerOfMass);
             tree.insert(point);
-        }.bind(this));
+        });
         this.context.clearRect(0, 0, this.width, this.height);
         this.points.forEach(point=>{
-            point.nearest = tree.nearestNeighbour(point);
             point.draw();
-            if (document.querySelector('#neighbour-opt').checked) this.drawLine(point.nearest, point);
+            if (document.querySelector('#neighbour-opt').checked) {
+                point.nearest = tree.nearestNeighbour(point);
+                this.drawLine(point.nearest, point);
+            }
+            let nextRot;
+            if (document.querySelector('#fly-opt').checked) {
+                nextRot = this.getAverageRotation(point, tree);
+            }
+            else {
+                nextRot = point.rotation;
+            }
+            point.move(nextRot);
         });
-        if (document.querySelector('#center-opt').checked) drawCenterOfMass(this.context, this.getAveragePosition());
-        console.log(tree.collisions);
+        if (document.querySelector('#center-opt').checked) {
+            drawCenterOfMass(this.context, this.getAveragePosition());
+        }
         tree = null;
-        //if (this.doAnim) {
-            //window.requestAnimationFrame(function() {
-                //this.animate();
-            //}.bind(this));
-        //}
+        if (this.doAnim) {
+           window.requestAnimationFrame(function() {
+                this.animate();
+            }.bind(this));
+        }
     }
-    static rotateToCenter(point, centerOfMass) {
-        var rotationToCenter = centerOfMass.angleInRadiansFrom(point);
-        var dRotA = point.getRotation() - rotationToCenter;
-        var dRotB = 2 * Math.PI - point.getRotation() + rotationToCenter;
-        var rotationDiff = (dRotA > dRotB) ? dRotB : dRotA;
-        point.updateRotation(2 * rotationDiff * ROTATION_RATE);
-        point.updateSpeed(point.getSpeed() + rotationDiff * DECEL);
+
+    getAverageRotation(p, tree) {
+        let rect = new Rect(
+            p.x - PROXIMITY, p.y - PROXIMITY,
+            p.x + PROXIMITY, p.y + PROXIMITY
+        )
+        let neighbours = tree.range(rect);
+        let avg, rots;
+        if (neighbours.length < 2) {
+            return p.rotation;
+        }
+        else {
+            rots = neighbours.map(x=>x.rotation);
+            avg = rots.reduce((acc, x)=>acc + x) / rots.length;
+            return avg;
+        }
     }
-    drawPoints() {
-        this.points.forEach(function(point) {
-            point.draw();
-        });
-    }
+
     drawLine(b1, b2) {
         this.context.beginPath();
         this.context.moveTo(b1.x, b1.y);
