@@ -1,11 +1,11 @@
-const MAX_SPEED = 5;
-const MIN_SPEED = 3;
+const MAX_SPEED = 5.5;
+const MIN_SPEED = 2.5;
 const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
-const START_COUNT = 1000;
+const START_COUNT = 250;
 const FULL_ROT = 2 * Math.PI;
-const PROXIMITY = 25;
+const PROXIMITY = 20;
 
 function equalPoints(b10, b2) {
     return Math.floor(b10.x * 10000) === Math.floor(b2.x * 10000) &&
@@ -247,7 +247,7 @@ class Point {
     getRotation() { return this.rotation; }
     getSpeed() { return this.speed; }
 
-    move(nextRot) {
+    move(nextRot, speed) {
         if (this. y > 10 && this.y < this.height - 10 &&
                 this. x > 10 && this.x < this.width - 10) {
             this.rotation = this.nextRot;
@@ -275,6 +275,7 @@ class Point {
                 this.x = 1;
             }
         }
+        this.speed = speed;
         if (this.speed < MAX_SPEED) this.speed *= ACCEL;
         else if (this.speed > MAX_SPEED) this.speed = MAX_SPEED;
         else if (this.speed < MIN_SPEED) this.speed = MIN_SPEED;
@@ -430,18 +431,23 @@ class Animation {
         this.context.clearRect(0, 0, this.width, this.height);
         this.points.forEach(point=>{
             point.draw();
+            point.nearest = tree.nearestNeighbour(point);
             if (document.querySelector('#neighbour-opt').checked) {
-                point.nearest = tree.nearestNeighbour(point);
                 this.drawLine(point.nearest, point);
             }
-            let nextRot;
-            if (document.querySelector('#fly-opt').checked) {
-                nextRot = this.getAverageRotation(point, tree);
+            let nextVelocity = {'speed': null, 'rotation': null};
+            if (distanceSquared(point, point.nearest) < 5) {
+                nextVelocity.rotation = (point.angleInRadiansFrom(point.nearest) + point.rotation) / 2;
+                nextVelocity.speed = MIN_SPEED;
+            }
+            else if (document.querySelector('#fly-opt').checked) {
+                nextVelocity = this.getAvgVelocity(point, tree);
             }
             else {
-                nextRot = point.rotation;
+                nextVelocity.rotation = point.rotation;
+                nextVelocity.speed = point.speed;
             }
-            point.move(nextRot);
+            point.move(nextVelocity.rotation, nextVelocity.speed);
         });
         if (document.querySelector('#center-opt').checked) {
             drawCenterOfMass(this.context, this.getAveragePosition());
@@ -454,20 +460,20 @@ class Animation {
         }
     }
 
-    getAverageRotation(p, tree) {
+    getAvgVelocity(p, tree) {
         let rect = new Rect(
             p.x - PROXIMITY, p.y - PROXIMITY,
             p.x + PROXIMITY, p.y + PROXIMITY
         )
         let neighbours = tree.range(rect);
-        let avg, rots;
+        let avgSpd, avgRot;
         if (neighbours.length < 2) {
-            return p.rotation;
+            return {'speed': p.speed, 'rotation': p.rotation};
         }
         else {
-            rots = neighbours.map(x=>x.rotation);
-            avg = rots.reduce((acc, x)=>acc + x) / rots.length;
-            return avg;
+            avgRot = neighbours.map(x=>x.rotation).reduce((acc, x)=>acc + x) / neighbours.length;
+            avgSpd = neighbours.map(x=>x.speed).reduce((acc, x)=>acc + x) / neighbours.length;
+            return {'speed': avgSpd, 'rotation': avgRot};
         }
     }
 
