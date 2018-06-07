@@ -42,9 +42,18 @@ class KdTree {
     insert(point) {
         /******************************************************************************************
         *   Public interface to put
+        *   Takes a Point or array of Points.
         ******************************************************************************************/
         if (point === null || point === undefined) throw 'Invalid argument';
-        this.rootNode = this.put(this.rootNode, point, null, true);
+        if (Array.isArray(point)) {
+            point.forEach(p=>{
+                if (!p instanceof Point || p === null) throw 'Invalid argument';
+                this.rootNode = this.put(this.rootNode, p, null, true);
+            });
+        }
+        else {
+            this.rootNode = this.put(this.rootNode, point, null, true);
+        }
     }
 
     put(node, point, _parent, isVertical) {
@@ -72,13 +81,11 @@ class KdTree {
         else {
             cmp = compareDouble(point.y, node.point[0].y);
         }
-        switch (cmp) {
-            case -1:
-                node.lb = this.put(node.lb, point, node, !isVertical);
-                break;
-            default:
-                node.rt = this.put(node.rt, point, node, !isVertical);
-                break;
+        if (cmp === -1) {
+            node.lb = this.put(node.lb, point, node, !isVertical);
+        }
+        else {
+            node.rt = this.put(node.rt, point, node, !isVertical);
         }
         return node;
     }
@@ -118,22 +125,20 @@ class KdTree {
         else {
             cmp = compareDouble(node.point[0].y, queryPoint.y);
         }
-        switch(cmp) {
-            case 1:
-                nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
-                // if nearest returned is greater than dist to current node, check the other branch
-                if (compareDouble(distanceSquared(nearest, queryPoint),
-                        this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
-                    nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
-                }
-                break;
-            default:
+        if (cmp === 1) {
+            nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
+            // if nearest returned is greater than dist to current node, check the other branch
+            if (compareDouble(distanceSquared(nearest, queryPoint),
+                this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
                 nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
-                if (compareDouble(distanceSquared(nearest, queryPoint),
-                        this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
-                    nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
-                }
-                break;
+            }
+        }
+        else {
+            nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
+            if (compareDouble(distanceSquared(nearest, queryPoint),
+                this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
+                nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
+            }
         }
         return nearest;
     }
@@ -146,9 +151,9 @@ class KdTree {
     }
 
     range(rect) {
-        if (rect === null) throw 'Illegal argument';
+        if (rect === null) throw 'Invalid argument';
         let stack = [];
-        getRange(this.rootNode, stack, rect, true);
+        this.getRange(this.rootNode, stack, rect, true);
         return stack;
     }
 
@@ -179,17 +184,15 @@ class KdTree {
                 cmp = (compareDouble(node.point[0].y, rect.ymin) < 0) ? 1 : -1;
             }
         }
-        switch (cmp) {
-            case 0:
-                getRange(node.lb, stack, rect, !isVertical);
-                getRange(node.rt, stack, rect, !isVertical);
-                break;
-            case -1:
-                getRange(node.lb, stack, rect, !isVertical);
-                break;
-            case 1:
-                getRange(node.rt, stack, rect, !isVertical);
-                break;
+        if (cmp === 0) {
+            this.getRange(node.lb, stack, rect, !isVertical);
+            this.getRange(node.rt, stack, rect, !isVertical);
+        }
+        else if (cmp === -1) {
+            this.getRange(node.lb, stack, rect, !isVertical);
+        }
+        else {
+            this.getRange(node.rt, stack, rect, !isVertical);
         }
     }
 }
@@ -197,6 +200,10 @@ class KdTree {
 
 class Rect {
     constructor(xmin, ymin, xmax, ymax) {
+        if (xmin === undefined || xmin === null || ymin === undefined || ymin === null ||
+            xmax === undefined || xmax === null || ymax === undefined || ymax === null) {
+            throw 'Invalid argument';
+        }
         this.xmin = xmin;
         this.ymin = ymin;
         this.xmax = xmax;
@@ -208,14 +215,6 @@ class Rect {
     }
 }
 
-function vReflection(rotation) {
-    if (rotation < Math.PI) return Math.PI - rotation;
-    else return FULL_ROT - rotation - Math.PI;
-}
-function hReflection(rotation) {
-    if (rotation < Math.PI) return FULL_ROT - rotation;
-    else return Math.PI - rotation - Math.Pi;
-}
 
 class Point {
     constructor(x, y, context, center, width, height) {
@@ -230,4 +229,15 @@ class Point {
             this.context = context;
         }
     }
+}
+
+
+function vReflection(rotation) {
+    if (rotation < Math.PI) return Math.PI - rotation;
+    else return FULL_ROT - rotation - Math.PI;
+}
+
+function hReflection(rotation) {
+    if (rotation < Math.PI) return FULL_ROT - rotation;
+    else return Math.PI - rotation - Math.Pi;
 }

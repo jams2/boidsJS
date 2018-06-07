@@ -1,5 +1,40 @@
 function randInt(max) { return Math.floor(Math.random() * max); }
 
+describe('Test range query', function() {
+    var tree;
+    var points;
+    var r;
+    var range;
+    var notInRange;
+    beforeAll(function() {
+        tree = new KdTree();
+        points = [
+            new Point(1, 2), new Point(5, 5), new Point(0, 0), new Point(10, 10),
+            new Point(9, 8), new Point(5, 5), new Point(1, 2), new Point(7, 9),
+            new Point(9.99, 9.99), new Point(9.99, 4.99)
+        ] 
+        tree.insert(points);
+        r = new Rect(5, 5, 10, 10);
+        range = tree.range(r);
+        notInRange = [];
+        points.forEach(point=> {
+            if (range.indexOf(point) === -1) notInRange.push(point);
+        });
+    });
+    it('Should handle null argument', function() {
+        expect(function(){ tree.range(null); }).toThrow('Invalid argument');
+    });
+    it('Should return all points in the given range', function() {
+        expect(range.length).toBe(6);
+        range.forEach(point=> {
+            expect(points.indexOf(point)).not.toEqual(-1);
+        });
+    });
+    it('Should not return any points not in the range', function() {
+        expect(notInRange.length).toEqual(4);
+    });
+});
+
 describe('Test Rect.contains method', function() {
     var p;
     var rect;
@@ -27,6 +62,19 @@ describe('Test Rect.contains method', function() {
         expect(rect.contains(r)).toBe(false);
         let s = new Point(15, 15);
         expect(rect.contains(s)).toBe(false);
+    });
+});
+
+describe('Test Rect constructor', function() {
+    it('Should handle null argument', function() {
+        expect(function(){ return new Rect(null, null, null, null); }).toThrow('Invalid argument');
+    });
+    it('Should correctly store fields', function() {
+        let r = new Rect(1, 2, 3, 4);
+        expect(r.xmin).toEqual(1);
+        expect(r.ymin).toEqual(2);
+        expect(r.xmax).toEqual(3);
+        expect(r.ymax).toEqual(4);
     });
 });
 

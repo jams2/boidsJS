@@ -371,17 +371,12 @@ class Animation {
             //        Animation.rotateToCenter(point, this.centerOfMass);
             //      }
             point.move(this.centerOfMass);
-            point.nearest = null;
             tree.insert(point);
         }.bind(this));
         this.context.clearRect(0, 0, this.width, this.height);
         this.points.forEach(point=>{
+            point.nearest = tree.nearestNeighbour(point);
             point.draw();
-            if (point.nearest === null) {
-                let nearest = tree.nearestNeighbour(point);
-                nearest.nearest = point;
-                point.nearest = nearest;
-            }
             if (document.querySelector('#neighbour-opt').checked) this.drawLine(point.nearest, point);
         });
         if (document.querySelector('#center-opt').checked) drawCenterOfMass(this.context, this.getAveragePosition());
