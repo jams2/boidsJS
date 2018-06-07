@@ -1,7 +1,33 @@
 function randInt(max) { return Math.floor(Math.random() * max); }
 
-describe('Test range query', function() {
-    it('Should work properly', function() {});
+describe('Test Rect.contains method', function() {
+    var p;
+    var rect;
+    beforeEach(function() {
+        p = new Point(5, 5);
+        rect = new Rect(0, 0, 10, 10);
+    });
+    it('Should return true for points in the middle', function() {
+        expect(rect.contains(p)).toBe(true);
+    });
+    it('Should return true for points on boundary', function() {
+        let q = new Point(0, 5);
+        expect(rect.contains(q)).toBe(true);
+        let r = new Point(5, 0);
+        expect(rect.contains(r)).toBe(true);
+        let s = new Point(10, 10);
+        expect(rect.contains(s)).toBe(true);
+        let t = new Point(0, 0);
+        expect(rect.contains(t)).toBe(true);
+    });
+    it('Should return false on outlying points', function() {
+        let q = new Point(-1, -1);
+        expect(rect.contains(q)).toBe(false);
+        let r = new Point(11, 0);
+        expect(rect.contains(r)).toBe(false);
+        let s = new Point(15, 15);
+        expect(rect.contains(s)).toBe(false);
+    });
 });
 
 describe('Test nearest neighbour query', function() {
@@ -145,7 +171,7 @@ describe('Test insert method', function() {
     });
 });
 
-describe('Test constructor', function() {
+describe('Test KdTree constructor', function() {
     var tree;
     beforeEach(function() {
         tree = new KdTree();
