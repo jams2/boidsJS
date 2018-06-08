@@ -3,7 +3,7 @@ const MIN_SPEED = 2.5;
 const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
-const START_COUNT = 250;
+const START_COUNT = 1;
 const FULL_ROT = 2 * Math.PI;
 const PROXIMITY = 20;
 
@@ -234,13 +234,21 @@ class Point {
             this.height = height;
             this.nearest = null;
             this.speed = MIN_SPEED;
-            this.rotation = this.angleInRadiansFrom(center);
+            this.center = new Point(center.x, center.y);
+            this.rotation = this.radiansFrom(center);
             this.context = context;
             this.nextRot = this.rotation;
+            this.vertex;
+            this.parabola;
+            this.turning = false;
+            this.vert;
         }
     }
-    angleInRadiansFrom(that) {
+    radiansFrom(that) {
         return Math.atan2(this.y - that.y, this.x - that.x);
+    }
+    slopeFrom(that) {
+        return (this.y - that.y) / (this.x - that.x);
     }
     updateSpeed(x) { this.speed = x; }
     updateRotation(x) { this.rotation = x; }
@@ -248,43 +256,72 @@ class Point {
     getSpeed() { return this.speed; }
 
     move(nextRot, speed) {
-        if (this. y > 10 && this.y < this.height - 10 &&
-                this. x > 10 && this.x < this.width - 10) {
+        if (this. y >= 100 && this.y <= this.height - 100 &&
+                this. x >= 100 && this.x <= this.width - 100) {
+            if (this.turning) this.turning = false;
             this.rotation = this.nextRot;
             this.nextRot = nextRot;
+            this.speed = speed;
+            if (this.speed < MAX_SPEED) this.speed *= ACCEL;
+            else if (this.speed > MAX_SPEED) this.speed = MAX_SPEED;
+            else if (this.speed < MIN_SPEED) this.speed = MIN_SPEED;
+            this.x += this.speed * Math.cos(this.rotation);
+            this.y += this.speed * Math.sin(this.rotation);
         }
         else {
-            if (this.y <= 0) {
-                this.rotation = this.nextRot;
-                this.nextRot = nextRot;
-                this.y = this.height - 1;
+            if (!this.turning) {
+                this.turning = true;
+                let a;
+                if (this.y < 100) {
+                    this.vertex = new Point((-this.y / this.slopeFrom(this.center)) + this.x, 0)
+                    this.parabola = this.makeHorizontalQuadratic(this.vertex);
+                    this.vert = false;
+                }
+                else if (this.y > this.height - 100) {
+                    this.vertex = new Point(((this.height - this.y)/this.slopeFrom(this.center)) + this.x, this.height);
+                    this.parabola = this.makeHorizontalQuadratic(this.vertex);
+                    this.vert = false;
+                }
+                else if (this.x < 100) {
+                    this.vertex = new Point(0, this.y-this.slopeFrom(this.center)*this.x);
+                    this.parabola = this.makeVerticalQuadratic(this.vertex);
+                    this.vert = true;
+                }
+                else if (this.x > this.width - 100) {
+                    this.vertex = new Point(this.width, this.slopeFrom(this.center)*(this.width-this.x)+this.y);
+                    this.parabola = this.makeVerticalQuadratic(this.vertex);
+                    this.vert = true;
+                }
             }
-            else if (this.y >= this.height - 0) {
-                this.rotation = this.nextRot;
-                this.nextRot = nextRot;
-                this.y = 1;
+            if (this.vert) {
+                this.y += this.speed * Math.sin(this.rotation);
+                this.x = this.parabola(this.y);
             }
-            if (this.x <= 0) {
-                this.rotation = this.nextRot;
-                this.nextRot = nextRot;
-                this.x = this.width - 1;
-            }
-            else if (this.x >= this.width - 0) {
-                this.rotation = this.nextRot;
-                this.nextRot = nextRot;
-                this.x = 1;
+            else {
+                this.x += this.speed * Math.cos(this.rotation);
+                this.y = this.parabola(this.x);
             }
         }
-        this.speed = speed;
-        if (this.speed < MAX_SPEED) this.speed *= ACCEL;
-        else if (this.speed > MAX_SPEED) this.speed = MAX_SPEED;
-        else if (this.speed < MIN_SPEED) this.speed = MIN_SPEED;
-        this.x += this.speed * Math.cos(this.rotation);
-        this.y += this.speed * Math.sin(this.rotation);
+    }
+
+    makeVerticalQuadratic(vertex) {
+        let a = (this.x - vertex.x) / Math.pow(this.y - vertex.y, 2);
+        let fY = function(y) {
+            return a * Math.pow(y-vertex.y, 2) + vertex.x;
+        }
+        return fY;
+    }
+
+    makeHorizontalQuadratic(vertex) {
+        let a = (this.y - vertex.y) / Math.pow(this.x - vertex.x, 2);
+        let fX =  function(x) {
+            return a * Math.pow(x - vertex.x, 2) + vertex.y;
+        }
+        return fX;
     }
 
     rotateToCenter(centerOfMass) {
-        let rotationToCenter = centerOfMass.angleInRadiansFrom(this);
+        let rotationToCenter = centerOfMass.radiansFrom(this);
         let rotation, dR;
         if (compareDouble(rotationToCenter, this.rotation) >= 0) {
             dR = (rotationToCenter - this.rotation);
@@ -436,8 +473,8 @@ class Animation {
                 this.drawLine(point.nearest, point);
             }
             let nextVelocity = {'speed': null, 'rotation': null};
-            if (distanceSquared(point, point.nearest) < 5) {
-                nextVelocity.rotation = (point.angleInRadiansFrom(point.nearest) + point.rotation) / 2;
+            if (tree.size > 1 && distanceSquared(point, point.nearest) < 5) {
+                nextVelocity.rotation = (point.radiansFrom(point.nearest) + point.rotation) / 2;
                 nextVelocity.speed = MIN_SPEED;
             }
             else if (document.querySelector('#fly-opt').checked) {
