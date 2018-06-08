@@ -256,6 +256,8 @@ class Point {
     getSpeed() { return this.speed; }
 
     move(nextRot, speed) {
+        let edge = this.closestEdge();
+        console.log(this.rotation, this.x, this.y, this.turning);
         if (this. y >= 100 && this.y <= this.height - 100 &&
                 this. x >= 100 && this.x <= this.width - 100) {
             if (this.turning) this.turning = false;
@@ -269,25 +271,26 @@ class Point {
             this.y += this.speed * Math.sin(this.rotation);
         }
         else {
-            if (!this.turning) {
+            if (!this.turning || this.vert && (edge === 0 || edge === 2) ||
+                    !this.vert && (edge === 1 || edge === 3)) {
                 this.turning = true;
                 let a;
-                if (this.y < 100) {
+                if (edge === 2) {
                     this.vertex = new Point((-this.y / this.slopeFrom(this.center)) + this.x, 0)
                     this.parabola = this.makeHorizontalQuadratic(this.vertex);
                     this.vert = false;
                 }
-                else if (this.y > this.height - 100) {
+                else if (edge === 0) {
                     this.vertex = new Point(((this.height - this.y)/this.slopeFrom(this.center)) + this.x, this.height);
                     this.parabola = this.makeHorizontalQuadratic(this.vertex);
                     this.vert = false;
                 }
-                else if (this.x < 100) {
+                else if (edge === 3) {
                     this.vertex = new Point(0, this.y-this.slopeFrom(this.center)*this.x);
                     this.parabola = this.makeVerticalQuadratic(this.vertex);
                     this.vert = true;
                 }
-                else if (this.x > this.width - 100) {
+                else if (edge === 1) {
                     this.vertex = new Point(this.width, this.slopeFrom(this.center)*(this.width-this.x)+this.y);
                     this.parabola = this.makeVerticalQuadratic(this.vertex);
                     this.vert = true;
@@ -300,6 +303,11 @@ class Point {
             else {
                 this.x += this.speed * Math.cos(this.rotation);
                 this.y = this.parabola(this.x);
+            }
+            if (this. y >= 100 && this.y <= this.height - 100 &&
+                this. x >= 100 && this.x <= this.width - 100) {
+                this.turning = false;
+                this.nextRot = -this.rotation;
             }
         }
     }
@@ -318,6 +326,11 @@ class Point {
             return a * Math.pow(x - vertex.x, 2) + vertex.y;
         }
         return fX;
+    }
+
+    closestEdge() {
+        let diffs = [this.height - this.y, this.width - this.x, this.y, this.x];
+        return diffs.indexOf(Math.min(...diffs));
     }
 
     rotateToCenter(centerOfMass) {
@@ -477,9 +490,9 @@ class Animation {
                 nextVelocity.rotation = (point.radiansFrom(point.nearest) + point.rotation) / 2;
                 nextVelocity.speed = MIN_SPEED;
             }
-            else if (document.querySelector('#fly-opt').checked) {
-                nextVelocity = this.getAvgVelocity(point, tree);
-            }
+            //else if (document.querySelector('#fly-opt').checked) {
+                //nextVelocity = this.getAvgVelocity(point, tree);
+            //}
             else {
                 nextVelocity.rotation = point.rotation;
                 nextVelocity.speed = point.speed;
