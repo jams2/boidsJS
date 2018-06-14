@@ -378,7 +378,7 @@ class Animation {
             this.pointFromClick(elt);
             // this.generatePoints(20, this.gaussianRandomPoint);
         }.bind(this));
-        this.doAnim = true;
+        this.doAnim = false;
         document.getElementById('stop').addEventListener('click', function() {
             this.doAnim = !this.doAnim;
             if (this.doAnim) { this.animate(); }
