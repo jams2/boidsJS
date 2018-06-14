@@ -1,11 +1,11 @@
-const MAX_SPEED = 5.5;
+const MAX_SPEED = 4;
 const MIN_SPEED = 2.5;
 const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
 const START_COUNT = 250;
 const FULL_ROT = 2 * Math.PI;
-const PROXIMITY = 20;
+const PROXIMITY = 50;
 
 function equalPoints(b10, b2) {
     return Math.floor(b10.x * 10000) === Math.floor(b2.x * 10000) &&
@@ -317,7 +317,10 @@ class Point {
         else return (that.y - this.y) / (that.x - this.x);
     }
     draw() {
-        this.context.fillRect(this.x, this.y, 5, 5);
+        this.context.beginPath();
+        this.context.arc(this.x, this.y, this.speed * 1.5, 0, 2*Math.PI, true);
+        this.context.fill();
+
     }
     moveRandom() {
         if (this.x == 0) {
@@ -350,8 +353,10 @@ function hReflection(rotation) {
 }
 
 function drawCenterOfMass(context, point) {
-    context.fillStyle = 'rgb(255, 0, 0)';
-    context.fillRect(point.x, point.y, 15, 15);
+    context.fillStyle = 'rgb(200, 255, 200)';
+    context.beginPath();
+    context.arc(point.x, point.y, 10, 0, 2*Math.PI, true);
+    context.fill();
     context.fillStyle = 'rgb(200, 255, 255)';
 }
 
@@ -366,7 +371,7 @@ class Animation {
         this.canvas = document.getElementById('context');
         this.context = this.canvas.getContext('2d');
         this.context.fillStyle = 'rgb(200, 255, 255)';
-        this.context.strokeStyle = '#ff0000';
+        this.context.strokeStyle = 'rgb(200, 255, 255)';
         this.context.lineWidth = 1;
         this.generatePoints(START_COUNT, this.gaussianRandomPoint);
         this.canvas.addEventListener('click', function(elt){
@@ -436,7 +441,7 @@ class Animation {
                 this.drawLine(point.nearest, point);
             }
             let nextVelocity = {'speed': null, 'rotation': null};
-            if (distanceSquared(point, point.nearest) < 5) {
+            if (distanceSquared(point, point.nearest) < 25) {
                 nextVelocity.rotation = (point.angleInRadiansFrom(point.nearest) + point.rotation) / 2;
                 nextVelocity.speed = MIN_SPEED;
             }
@@ -449,9 +454,9 @@ class Animation {
             }
             point.move(nextVelocity.rotation, nextVelocity.speed);
         });
-        if (document.querySelector('#center-opt').checked) {
-            drawCenterOfMass(this.context, this.getAveragePosition());
-        }
+//        if (document.querySelector('#center-opt').checked) {
+//            drawCenterOfMass(this.context, this.getAveragePosition());
+//        }
         tree = null;
         if (this.doAnim) {
            window.requestAnimationFrame(function() {
