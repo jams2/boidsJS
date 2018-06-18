@@ -3,15 +3,14 @@ const MIN_SPEED = 2.5;
 const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
-const START_COUNT = 250;
+const START_COUNT = 50;
 const FULL_ROT = 2 * Math.PI;
-const PROXIMITY = 50;
+const PROXIMITY = 35;
 
 function equalPoints(b10, b2) {
     return Math.floor(b10.x * 10000) === Math.floor(b2.x * 10000) &&
         Math.floor(b10.y * 10000) === Math.floor(b2.y * 10000);
 }
-
 
 function compareDouble(a, b) {
     a = Math.floor(a * 1000);
@@ -20,7 +19,6 @@ function compareDouble(a, b) {
     else if (a < b) return -1;
     else return 1;
 }
-
 
 function distanceSquared(p, q) {
     if (p === q || equalPoints(p, q)) return Infinity;
@@ -218,6 +216,7 @@ class Rect {
         this.xmax = xmax;
         this.ymax = ymax;
     }
+
     contains(point) {
         return point.x >= this.xmin && point.x <= this.xmax &&
             point.y >= this.ymin && point.y <= this.ymax;
@@ -234,6 +233,7 @@ class Point {
             this.height = height;
             this.nearest = null;
             this.speed = MIN_SPEED;
+            this.center = new Point(center.x, center.y);
             this.rotation = this.angleInRadiansFrom(center);
             this.context = context;
             this.nextRot = this.rotation;
@@ -242,67 +242,52 @@ class Point {
     angleInRadiansFrom(that) {
         return Math.atan2(this.y - that.y, this.x - that.x);
     }
+
     updateSpeed(x) { this.speed = x; }
+
     updateRotation(x) { this.rotation = x; }
+
     getRotation() { return this.rotation; }
+
     getSpeed() { return this.speed; }
 
     move(nextRot, speed) {
-        if (this. y > 10 && this.y < this.height - 10 &&
-                this. x > 10 && this.x < this.width - 10) {
-            this.rotation = this.nextRot;
-            this.nextRot = nextRot;
+        this.rotation = (this.rotation + nextRot) / 2;
+        let dX = this.getDx();
+        let dY = this.getDy();
+        if (this.x + dX > this.width || this.x + dX < 0 ) {
+            dX = -dX;
+            this.rotation = Math.PI - this.rotation;
         }
-        else {
-            if (this.y <= 0) {
-                this.rotation = this.nextRot;
-                this.nextRot = nextRot;
-                this.y = this.height - 1;
-            }
-            else if (this.y >= this.height - 0) {
-                this.rotation = this.nextRot;
-                this.nextRot = nextRot;
-                this.y = 1;
-            }
-            if (this.x <= 0) {
-                this.rotation = this.nextRot;
-                this.nextRot = nextRot;
-                this.x = this.width - 1;
-            }
-            else if (this.x >= this.width - 0) {
-                this.rotation = this.nextRot;
-                this.nextRot = nextRot;
-                this.x = 1;
-            }
+        if (this.y + dY > this.height || this.y + dY < 0) {
+            dY = -dY;
+            this.rotation = -this.rotation;
         }
-        this.speed = speed;
-        if (this.speed < MAX_SPEED) this.speed *= ACCEL;
-        else if (this.speed > MAX_SPEED) this.speed = MAX_SPEED;
-        else if (this.speed < MIN_SPEED) this.speed = MIN_SPEED;
-        this.x += this.speed * Math.cos(this.rotation);
-        this.y += this.speed * Math.sin(this.rotation);
+        if (speed < MAX_SPEED) {
+            this.speed = speed * ACCEL;
+        }
+        else if (speed > MAX_SPEED) {
+            this.speed = MAX_SPEED;
+        }
+        else if (speed < MIN_SPEED) {
+            this.speed = MIN_SPEED;
+        }
+        this.x += dX;
+        this.y += dY;
     }
 
-    rotateToCenter(centerOfMass) {
-        let rotationToCenter = centerOfMass.angleInRadiansFrom(this);
-        let rotation, dR;
-        if (compareDouble(rotationToCenter, this.rotation) >= 0) {
-            dR = (rotationToCenter - this.rotation);
-            rotation = rotationToCenter - (dR * ROTATION_RATE);
-        }
-        else {
-            dR = (this.rotation - rotationToCenter);
-            rotation = this.rotation - (dR * ROTATION_RATE);
-        }
-        let decel = this.rotation / rotation / 100;
-        //this.speed = MAX_SPEED - (MAX_SPEED-MIN_SPEED) * (2*Math.PI/dR/100);
-        if (compareDouble(rotation, 0) < 0) return 2*Math.PI - rotation;
-        else return rotation;
+    getDx() {
+        return this.speed * Math.cos(this.rotation);
+    }
+
+    getDy() {
+        return this.speed * Math.sin(this.rotation);
     }
 
     bySlope(p, q) {
         return this.slopeTo(p) - this.slopeTo(q);
     }
+
     compareTo(that) {
         if (this.y < that.y) return -1;
         else if (this.y > that.y) return 1;
@@ -310,18 +295,21 @@ class Point {
         else if (this.x > that.x) return 1;
         else return 0;
     }
+
     slopeTo(that) {
         if (this.x == that.x && this.y == that.y) return -Infinity;
         else if (this.y == that.y) return 0.0;
         else if (this.x == that.x) return Infinity;
         else return (that.y - this.y) / (that.x - this.x);
     }
+
     draw() {
         this.context.beginPath();
         this.context.arc(this.x, this.y, this.speed * 1.5, 0, 2*Math.PI, true);
         this.context.fill();
 
     }
+
     moveRandom() {
         if (this.x == 0) {
             this.x = 1;
@@ -340,16 +328,6 @@ class Point {
             this.y = Math.round(Math.random()) == 0 ? this.y + dY : this.y - dY;
         }
     }
-}
-
-function vReflection(rotation) {
-    if (rotation < Math.PI) return Math.PI - rotation;
-    else return FULL_ROT - rotation - Math.PI;
-}
-
-function hReflection(rotation) {
-    if (rotation < Math.PI) return FULL_ROT - rotation;
-    else return Math.PI - rotation - Math.Pi;
 }
 
 function drawCenterOfMass(context, point) {
@@ -385,7 +363,6 @@ class Animation {
         }.bind(this));
     }
 
-    size() { return this.points.length; }
     newPoint(x, y) {
         return new Point(x, y, this.context, this.center, this.width, this.height);
     }
@@ -415,19 +392,6 @@ class Animation {
         for (var i = 0; i < 6; i += 1) { rand += Math.random(); }
         return rand / 6;
     }
-    getAveragePosition() {
-        var sumX = 0;
-        var sumY = 0;
-        var len = this.size();
-        for (var i = 0; i < len; i++) {
-            sumX += this.points[i].x;
-            sumY += this.points[i].y;
-        }
-        return this.newPoint(Math.floor(sumX/len), Math.floor(sumY/len));
-    }
-    isOutOfBounds(point) {
-        return (point.x >= this.width || point.x <= 0 || point.y >= this.height || point.y <= 0);
-    }
     animate() {
         let tree = new KdTree();
         this.points.forEach(function(point){
@@ -441,12 +405,14 @@ class Animation {
                 this.drawLine(point.nearest, point);
             }
             let nextVelocity = {'speed': null, 'rotation': null};
-            if (distanceSquared(point, point.nearest) < 25) {
+            if (document.querySelector('#flock-opt').checked &&
+                    point.x > 50 && point.x < this.width - 50 &&
+                    point.y > 50 && point.y < this.height - 50) {
+                nextVelocity = this.getRangeAverages(point, tree);
+            }
+            else if (distanceSquared(point, point.nearest) < 15) {
                 nextVelocity.rotation = (point.angleInRadiansFrom(point.nearest) + point.rotation) / 2;
                 nextVelocity.speed = MIN_SPEED;
-            }
-            else if (document.querySelector('#fly-opt').checked) {
-                nextVelocity = this.getAvgVelocity(point, tree);
             }
             else {
                 nextVelocity.rotation = point.rotation;
@@ -454,10 +420,6 @@ class Animation {
             }
             point.move(nextVelocity.rotation, nextVelocity.speed);
         });
-//        if (document.querySelector('#center-opt').checked) {
-//            drawCenterOfMass(this.context, this.getAveragePosition());
-//        }
-        tree = null;
         if (this.doAnim) {
            window.requestAnimationFrame(function() {
                 this.animate();
@@ -465,21 +427,18 @@ class Animation {
         }
     }
 
-    getAvgVelocity(p, tree) {
+    getRangeAverages(p, tree) {
         let rect = new Rect(
             p.x - PROXIMITY, p.y - PROXIMITY,
             p.x + PROXIMITY, p.y + PROXIMITY
         )
         let neighbours = tree.range(rect);
-        let avgSpd, avgRot;
         if (neighbours.length < 2) {
             return {'speed': p.speed, 'rotation': p.rotation};
         }
-        else {
-            avgRot = neighbours.map(x=>x.rotation).reduce((acc, x)=>acc + x) / neighbours.length;
-            avgSpd = neighbours.map(x=>x.speed).reduce((acc, x)=>acc + x) / neighbours.length;
-            return {'speed': avgSpd, 'rotation': avgRot};
-        }
+        let avgRot = neighbours.map(x=>x.rotation).reduce((acc, x)=>acc + x) / neighbours.length;
+        let avgSpd = neighbours.map(x=>x.speed).reduce((acc, x)=>acc + x) / neighbours.length;
+        return {'speed': avgSpd, 'rotation': avgRot};
     }
 
     drawLine(b1, b2) {
@@ -490,13 +449,8 @@ class Animation {
     }
 }
 
-function main() {
+window.addEventListener("load", function() {
     var container = document.getElementById('container');
     var anim = new Animation(container);
     anim.animate();
-}
-
-window.addEventListener("load", function() {
-    main();
 });
-
