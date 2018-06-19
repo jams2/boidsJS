@@ -158,6 +158,10 @@ class KdTree {
     }
 
     range(rect) {
+        /******************************************************************************************
+         * rect: 2d Rect object
+         * Return an array of all points within the 2d range. Interface to KdTree.getRange
+         *****************************************************************************************/
         if (rect === null) throw 'Invalid argument';
         let stack = [];
         this.getRange(this.rootNode, stack, rect, true);
@@ -165,8 +169,6 @@ class KdTree {
     }
 
     getRange(node, stack, rect, isVertical) {
-        /*
-         */
         if (node === null) return;
         let cmp;
         if (rect.contains(node.point[0])) {
@@ -240,17 +242,10 @@ class Point {
             this.nextRot = this.rotation;
         }
     }
+
     angleInRadiansFrom(that) {
         return Math.atan2(this.y - that.y, this.x - that.x);
     }
-
-    updateSpeed(x) { this.speed = x; }
-
-    updateRotation(x) { this.rotation = x; }
-
-    getRotation() { return this.rotation; }
-
-    getSpeed() { return this.speed; }
 
     move(nextRot, speed) {
         this.rotation = (this.rotation + nextRot) / 2;
@@ -305,14 +300,6 @@ class Point {
     }
 }
 
-function drawCenterOfMass(context, point) {
-    context.fillStyle = 'rgb(200, 255, 200)';
-    context.beginPath();
-    context.arc(point.x, point.y, 10, 0, 2*Math.PI, true);
-    context.fill();
-    context.fillStyle = 'rgb(200, 255, 255)';
-}
-
 class Animation {
     constructor(container0, container1) {
         this.points = [];
@@ -328,14 +315,12 @@ class Animation {
         this.point_ctx = this.canvas1.getContext('2d');
         this.point_ctx.fillStyle = 'rgb(200, 255, 255)';
         this.generatePoints(START_COUNT, this.gaussianRandomPoint);
-        this.canvas1.addEventListener('click', function(elt){
-            this.pointFromClick(elt);
-        }.bind(this));
+        this.canvas1.addEventListener('click', (elt)=> this.pointFromClick(elt));
         this.doAnim = true;
-        document.querySelector('#stop').addEventListener('click', function() {
+        document.querySelector('#stop').addEventListener('click', ()=> {
             this.doAnim = !this.doAnim;
-            if (this.doAnim) { this.animate(); }
-        }.bind(this));
+            if (this.doAnim) this.animate();
+        });
     }
 
     newPoint(x, y) {
@@ -348,8 +333,9 @@ class Animation {
 
     generatePoints(x, func) {
         let pointFactory = func.bind(this);
-        for (var _ = 0; _ < x; _++)
+        for (var _ = 0; _ < x; _++) {
             this.points.push(pointFactory());
+        }
     }
 
     static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit + 1)); }
@@ -406,9 +392,7 @@ class Animation {
             point.move(nextVelocity.rotation, nextVelocity.speed);
         });
         if (this.doAnim) {
-           window.requestAnimationFrame(function() {
-                this.animate();
-            }.bind(this));
+           window.requestAnimationFrame(()=> this.animate());
         }
     }
 
@@ -418,6 +402,15 @@ class Animation {
         context.fill();
     }
 
+    drawLine(b1, b2, context) {
+        context.strokeStyle = 'rgb(100, 155, 155)';
+        context.beginPath();
+        context.moveTo(b1.x, b1.y);
+        context.lineTo(b2.x, b2.y);
+        context.stroke();
+        context.strokeStyle = 'rgb(200, 255, 255)';
+    }
+ 
     getRangeAverages(p, tree) {
         let rect = new Rect(
             p.x - PROXIMITY, p.y - PROXIMITY,
@@ -432,13 +425,12 @@ class Animation {
         return {'speed': avgSpd, 'rotation': avgRot};
     }
 
-    drawLine(b1, b2, context) {
-        context.strokeStyle = 'rgb(100, 155, 155)';
+    drawCenterOfMass(context, point) {
+        context.fillStyle = 'rgb(200, 255, 200)';
         context.beginPath();
-        context.moveTo(b1.x, b1.y);
-        context.lineTo(b2.x, b2.y);
-        context.stroke();
-        context.strokeStyle = 'rgb(200, 255, 255)';
+        context.arc(point.x, point.y, 10, 0, 2*Math.PI, true);
+        context.fill();
+        context.fillStyle = 'rgb(200, 255, 255)';
     }
 }
 
