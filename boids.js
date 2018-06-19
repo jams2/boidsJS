@@ -1,5 +1,5 @@
-const MAX_SPEED = 4;
-const MIN_SPEED = 2.5;
+const MAX_SPEED = 1.5;
+const MIN_SPEED = 1;
 const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
@@ -7,9 +7,9 @@ const START_COUNT = 50;
 const FULL_ROT = 2 * Math.PI;
 const PROXIMITY = 35;
 
-function equalPoints(b10, b2) {
-    return Math.floor(b10.x * 10000) === Math.floor(b2.x * 10000) &&
-        Math.floor(b10.y * 10000) === Math.floor(b2.y * 10000);
+function equalPoints(p1, p2) {
+    return Math.floor(p1.x * 10000) === Math.floor(p2.x * 10000) &&
+        Math.floor(p1.y * 10000) === Math.floor(p2.y * 10000);
 }
 
 function compareDouble(a, b) {
@@ -17,7 +17,7 @@ function compareDouble(a, b) {
     b = Math.floor(b * 1000);
     if (a === b) return 0;
     else if (a < b) return -1;
-    else return 1;
+    return 1;
 }
 
 function distanceSquared(p, q) {
@@ -225,9 +225,10 @@ class Rect {
 
 
 class Point {
-    constructor(x, y, context, center, width, height) {
+    constructor(x, y, id, context, center, width, height) {
         this.x = x;
         this.y = y;
+        this.id = id;
         if (context) {
             this.width = width;
             this.height = height;
@@ -253,14 +254,14 @@ class Point {
 
     move(nextRot, speed) {
         this.rotation = (this.rotation + nextRot) / 2;
-        let dX = this.getDx();
-        let dY = this.getDy();
-        if (this.x + dX > this.width || this.x + dX < 0 ) {
-            dX = -dX;
+        let dx = this.getDx();
+        let dy = this.getDy();
+        if (this.x + dx > this.width || this.x + dx < 0 ) {
+            dx = -dx;
             this.rotation = Math.PI - this.rotation;
         }
-        if (this.y + dY > this.height || this.y + dY < 0) {
-            dY = -dY;
+        if (this.y + dy > this.height || this.y + dy < 0) {
+            dy = -dy;
             this.rotation = -this.rotation;
         }
         if (speed < MAX_SPEED) {
@@ -272,8 +273,8 @@ class Point {
         else if (speed < MIN_SPEED) {
             this.speed = MIN_SPEED;
         }
-        this.x += dX;
-        this.y += dY;
+        this.x += dx;
+        this.y += dy;
     }
 
     getDx() {
@@ -302,32 +303,6 @@ class Point {
         else if (this.x == that.x) return Infinity;
         else return (that.y - this.y) / (that.x - this.x);
     }
-
-    draw() {
-        this.context.beginPath();
-        this.context.arc(this.x, this.y, this.speed * 1.5, 0, 2*Math.PI, true);
-        this.context.fill();
-
-    }
-
-    moveRandom() {
-        if (this.x == 0) {
-            this.x = 1;
-        } else if (this.x == this.context.width) {
-            this.x -= 1;
-        } else {
-            var dX = Math.round(Math.random());
-            this.x = Math.round(Math.random()) == 0 ? this.x + dX : this.x - dX;
-        }
-        if (this.y == 0) {
-            this.y = 1;
-        } else if (this.y == this.context.height) {
-            y -= 1;
-        } else {
-            var dY = Math.round(Math.random());
-            this.y = Math.round(Math.random()) == 0 ? this.y + dY : this.y - dY;
-        }
-    }
 }
 
 function drawCenterOfMass(context, point) {
@@ -339,32 +314,32 @@ function drawCenterOfMass(context, point) {
 }
 
 class Animation {
-    constructor(container) {
+    constructor(container0, container1) {
         this.points = [];
-        this.width = document.querySelector('.container').clientWidth;
-        this.height = document.querySelector('.container').clientHeight;
+        this.width = document.querySelector('.container0').clientWidth;
+        this.height = document.querySelector('.container0').clientHeight;
         this.center = {'x': Math.floor(this.width/2), 'y': Math.floor(this.height/2)};
         this.centerOfMass = this.newPoint(this.center.x, this.center.y);
-        container.innerHTML = '<canvas id="context" width="' + this.width + '" height="' + this.height + '"></canvas>';
-        this.canvas = document.getElementById('context');
-        this.context = this.canvas.getContext('2d');
-        this.context.fillStyle = 'rgb(200, 255, 255)';
-        this.context.strokeStyle = 'rgb(200, 255, 255)';
-        this.context.lineWidth = 1;
+        container0.innerHTML = '<canvas id="point_ctx" width="' + this.width + '" height="' + this.height + '"></canvas>';
+        container1.innerHTML = '<canvas id="line_ctx" width="' + this.width + '" height="' + this.height + '"></canvas>';
+        this.canvas0 = document.querySelector('#point_ctx');
+        this.canvas1 = document.querySelector('#line_ctx');
+        this.line_ctx = this.canvas0.getContext('2d');
+        this.point_ctx = this.canvas1.getContext('2d');
+        this.point_ctx.fillStyle = 'rgb(200, 255, 255)';
         this.generatePoints(START_COUNT, this.gaussianRandomPoint);
-        this.canvas.addEventListener('click', function(elt){
+        this.canvas1.addEventListener('click', function(elt){
             this.pointFromClick(elt);
-            // this.generatePoints(20, this.gaussianRandomPoint);
         }.bind(this));
-        this.doAnim = false;
-        document.getElementById('stop').addEventListener('click', function() {
+        this.doAnim = true;
+        document.querySelector('#stop').addEventListener('click', function() {
             this.doAnim = !this.doAnim;
             if (this.doAnim) { this.animate(); }
         }.bind(this));
     }
 
     newPoint(x, y) {
-        return new Point(x, y, this.context, this.center, this.width, this.height);
+        return new Point(x, y, this.points.length, this.point_ctx, this.center, this.width, this.height);
     }
 
     pointFromClick(elt) {
@@ -378,31 +353,41 @@ class Animation {
     }
 
     static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit + 1)); }
+
     static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
+
     gaussianRandomPoint() {
-        return this.newPoint(Animation.gaussianRandom(this.width), Animation.gaussianRandom(this.height));
+        return this.newPoint(Animation.gaussianRandom(this.width),
+                             Animation.gaussianRandom(this.height));
     }
+
     uniformRandomPoint() {
         return this.newPoint(Animation.uniformRandom(this.width),
-            Animation.uniformRandom(this.height));
+                             Animation.uniformRandom(this.height));
     }
+
     // gaussian random generator from https://stackoverflow.com/a/39187274
     static gaussianRand() {
         var rand = 0;
         for (var i = 0; i < 6; i += 1) { rand += Math.random(); }
         return rand / 6;
     }
+
     animate() {
         let tree = new KdTree();
+        let neighbourDrawn = [];
         this.points.forEach(function(point){
             tree.insert(point);
         });
-        this.context.clearRect(0, 0, this.width, this.height);
+        this.point_ctx.clearRect(0, 0, this.width, this.height);
+        this.line_ctx.clearRect(0, 0, this.width, this.height);
         this.points.forEach(point=>{
-            point.draw();
             point.nearest = tree.nearestNeighbour(point);
-            if (document.querySelector('#neighbour-opt').checked) {
-                this.drawLine(point.nearest, point);
+            this.drawPoint(point, this.point_ctx);
+            if (document.querySelector('#neighbour-opt').checked &&
+                    neighbourDrawn[point.id] === undefined) {
+                this.drawLine(point.nearest, point, this.line_ctx);
+                neighbourDrawn[point.id] = true;
             }
             let nextVelocity = {'speed': null, 'rotation': null};
             if (document.querySelector('#flock-opt').checked &&
@@ -410,7 +395,7 @@ class Animation {
                     point.y > 50 && point.y < this.height - 50) {
                 nextVelocity = this.getRangeAverages(point, tree);
             }
-            else if (distanceSquared(point, point.nearest) < 15) {
+            else if (distanceSquared(point, point.nearest) < 5) {
                 nextVelocity.rotation = (point.angleInRadiansFrom(point.nearest) + point.rotation) / 2;
                 nextVelocity.speed = MIN_SPEED;
             }
@@ -427,6 +412,12 @@ class Animation {
         }
     }
 
+    drawPoint(point, context) {
+        context.beginPath();
+        context.arc(point.x, point.y, point.speed*2.5, 0, 2*Math.PI, true);
+        context.fill();
+    }
+
     getRangeAverages(p, tree) {
         let rect = new Rect(
             p.x - PROXIMITY, p.y - PROXIMITY,
@@ -441,16 +432,20 @@ class Animation {
         return {'speed': avgSpd, 'rotation': avgRot};
     }
 
-    drawLine(b1, b2) {
-        this.context.beginPath();
-        this.context.moveTo(b1.x, b1.y);
-        this.context.lineTo(b2.x, b2.y);
-        this.context.stroke();
+    drawLine(b1, b2, context) {
+        context.strokeStyle = 'rgb(100, 155, 155)';
+        context.beginPath();
+        context.moveTo(b1.x, b1.y);
+        context.lineTo(b2.x, b2.y);
+        context.stroke();
+        context.strokeStyle = 'rgb(200, 255, 255)';
     }
 }
 
+
 window.addEventListener("load", function() {
-    var container = document.getElementById('container');
-    var anim = new Animation(container);
+    let container0 = document.querySelector('#container0');
+    let container1 = document.querySelector('#container1');
+    let anim = new Animation(container0, container1);
     anim.animate();
 });

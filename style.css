@@ -33,13 +33,21 @@ footer, header, hgroup, menu, nav, section {
   margin: inherit;
 }
 body {
-	line-height: 1;
+  line-height: 1;
+  font-family: 'Encode Sans Condensed', sans-serif;
+  background-color: black;
+  overflow: hidden;
+  touch-action: none;
+  font-size: 100%;
+}
+input {
+  vertical-align: baseline;
 }
 ol, ul {
-	list-style: none;
+  list-style: none;
 }
 blockquote, q {
-	quotes: none;
+  quotes: none;
 }
 blockquote:before, blockquote:after,
 q:before, q:after {
@@ -50,12 +58,7 @@ table {
 	border-collapse: collapse;
 	border-spacing: 0;
 }
-body {
-  background-color: black;
-  overflow: hidden;
-  touch-action: none;
-}
-.container {
+.container0 {
   position: absolute;
   z-index: 0;
   width: 100vw;
@@ -63,29 +66,52 @@ body {
   color: white;
   font-size: 20px;
 }
-.overlay {
+.container1 {
+  position: absolute;
   z-index: 1;
+  width: 100vw;
+  height: 100vh;
+  color: white;
+  font-size: 20px;
+}
+.overlay {
+  z-index: 2;
   background-color: #333;
+  border: 1px solid #DADADA;
+  border-radius: 2%;
+  opacity: 0.8;
+  text-align: left;
+  padding: 0.5rem;
 }
 .fixed {
   position: absolute;
-  bottom: 0;
-  width: 100%;
-  text-align: center;
-  border-radius: 2%;
-  opacity: 0.8;
-  padding: 0.5rem;
+  top: 5px;
+  left: 5px;
 }
 .opts {
-  display: inline-block;
-  margin: 1em;
+  display: block;
+  margin: 0.5rem;
   color: #AAFFFF;
-}
-label, input {
   vertical-align: middle;
-  margin: 0 0.25rem;
+}
+input {
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+label {
+  display: inline-block;
+  vertical-align: top;
+  margin-left: 0.25rem;
 }
 button {
-  margin: auto;
+  font-family: 'Encode Sans Condensed', sans-serif;
+  font-size: 1em;
+  font-weight: 500;
+  vertical-align: middle;
+  margin: 0.5rem auto;
+  padding: 0.25rem 0.5rem;
 }
-
+.center {
+  text-align: center;
+}
