@@ -5,7 +5,8 @@ const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
 const START_COUNT = 50;
 const FULL_ROT = 2 * Math.PI;
-const PROXIMITY = 35;
+const PROXIMITY = 0;
+const G = 5;
 
 function equalPoints(p1, p2) {
     return Math.floor(p1.position.x * 10000) === Math.floor(p2.position.x * 10000) &&
@@ -234,7 +235,7 @@ class Vector {
 
     static checkArgType(other) {
         if (!(other instanceof Vector)) {
-            throw `Invalid arg: ${arguments.callee.name}: ${other.constructor}`
+            throw 'Invalid arg';
         }
     }
 
@@ -243,6 +244,23 @@ class Vector {
             this.normalize();
             this.scale(max);
         }
+    }
+
+    static add(v1, v2) {
+        return new Vector(
+            v1.x + v2.x,
+            v1.y + v2.y
+        );
+    }
+
+    static subtract(v1, v2) {
+        return new Vector(
+            v1.x - v2.x, v1.y - v2.y
+        );
+    }
+
+    static divide(vector, scalar) {
+        return new Vector(vector.x / scalar, vector.y / scalar);
     }
 
     add(other) {
@@ -295,7 +313,7 @@ class Vector {
 
 class Point {
     constructor(x, y, id, context, center, width, height) {
-        this.mass = 3;
+        this.mass = Math.floor(Math.random() * (7 - 3) + 3);
         this.position = new Vector(x, y);
         this.velocity = new Vector(0, 0);
         this.lastPos = null;
@@ -315,7 +333,8 @@ class Point {
 
     applyForce(force) {
         Vector.checkArgType(force);
-        this.accel.add(force);
+        const f = Vector.divide(force, this.mass);
+        this.accel.add(f);
     }
 
     angleInRadiansFrom(that) {
@@ -327,7 +346,7 @@ class Point {
 
     move() {
         this.velocity.add(this.accel);
-        this.velocity.limit(10);
+        this.velocity.limit(15);
         this.position.add(this.velocity);
         this.accel.scale(0);
     }
@@ -439,30 +458,56 @@ class Animation {
                 this.drawLine(point.nearest, point, this.line_ctx);
                 neighbourDrawn[point.id] = true;
             }
-            let nextVelocity = {'speed': null, 'rotation': null};
-            if (document.querySelector('#flock-opt').checked &&
-                    point.position.x > 50 && point.position.x < this.width - 50 &&
-                    point.position.y > 50 && point.position.y < this.height - 50) {
-                nextVelocity = this.getRangeAverages(point, tree);
-            }
-            else if (distanceSquared(point, point.nearest) < 5) {
-                nextVelocity.rotation = (point.angleInRadiansFrom(point.nearest) + point.rotation) / 2;
-                nextVelocity.speed = MIN_SPEED;
-            }
-            else {
-                nextVelocity.rotation = point.rotation;
-                nextVelocity.speed = point.speed;
-            }
-            const grav = this.center.position.copy();
-            grav.subtract(point.position);
-            grav.normalize();
-            grav.divideBy(5)
-            point.applyForce(grav);
-            point.move(nextVelocity.rotation, nextVelocity.speed);
+            const flock = this.getRangeAverages(point, tree);
+            const edges = this.edgeGrav(point);
+            point.applyForce(flock);
+            point.applyForce(edges);
+            point.move();
         });
         if (this.doAnim) {
            window.requestAnimationFrame(()=> this.animate());
         }
+    }
+
+    edgeGrav(point) {
+        const north = Vector.subtract(point.position, new Vector(point.position.x, 0));
+        const dNorth = north.length()
+        const fNorth = (G * point.mass * 20) / dNorth * dNorth;
+        north.normalize();
+        north.scale(fNorth);
+        const east = Vector.subtract(point.position, new Vector(this.width, point.position.y));
+        const dEast = east.length()
+        const fEast = (G * point.mass * 20) / dEast * dEast;
+        east.normalize();
+        east.scale(fEast);
+        const south = Vector.subtract(point.position, new Vector(point.position.x, this.height));
+        const dSouth = south.length()
+        const fSouth = (G * point.mass * 20) / dSouth * dSouth;
+        south.normalize();
+        south.scale(fSouth);
+        const west = Vector.subtract(point.position, new Vector(0, point.position.y));
+        const dWest = west.length()
+        const fWest = (G * point.mass * 20) / dWest * dWest;
+        west.normalize();
+        west.scale(fWest);
+        const min = Math.min(dNorth, dEast, dSouth, dWest);
+        let selected = null;
+        switch (min) {
+            case dNorth:
+                selected = north;
+                break;
+            case dEast:
+                selected = east;
+                break;
+            case dSouth:
+                selected = south;
+                break;
+            case dWest:
+                selected = west;
+                break;
+        }
+        selected.scale(-1);
+        return selected;
     }
 
     drawPoint(point, context) {
@@ -481,17 +526,20 @@ class Animation {
     }
  
     getRangeAverages(p, tree) {
-        let rect = new Rect(
+        const rect = new Rect(
             p.position.x - PROXIMITY, p.position.y - PROXIMITY,
             p.position.x + PROXIMITY, p.position.y + PROXIMITY
         )
-        let neighbours = tree.range(rect);
+        const neighbours = tree.range(rect);
         if (neighbours.length < 2) {
-            return {'speed': p.speed, 'rotation': p.rotation};
+            return new Vector(1, 1);
         }
-        let avgRot = neighbours.map(x=>x.rotation).reduce((acc, x)=>acc + x) / neighbours.length;
-        let avgSpd = neighbours.map(x=>x.speed).reduce((acc, x)=>acc + x) / neighbours.length;
-        return {'speed': avgSpd, 'rotation': avgRot};
+        const vectors = neighbours.map(x=>x.position);
+        const sumVectors = vectors.reduce((acc, next) => {
+            return Vector.add(acc, next);
+        }, new Vector(0, 0));
+        const avg = Vector.divide(sumVectors, neighbours.length);
+        return avg;
     }
 
     drawCenterOfMass(context, point) {
