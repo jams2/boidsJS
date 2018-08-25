@@ -8,8 +8,8 @@ const FULL_ROT = 2 * Math.PI;
 const PROXIMITY = 35;
 
 function equalPoints(p1, p2) {
-    return Math.floor(p1.x * 10000) === Math.floor(p2.x * 10000) &&
-        Math.floor(p1.y * 10000) === Math.floor(p2.y * 10000);
+    return Math.floor(p1.position.x * 10000) === Math.floor(p2.position.x * 10000) &&
+        Math.floor(p1.position.y * 10000) === Math.floor(p2.position.y * 10000);
 }
 
 function compareDouble(a, b) {
@@ -22,8 +22,8 @@ function compareDouble(a, b) {
 
 function distanceSquared(p, q) {
     if (p === q || equalPoints(p, q)) return Infinity;
-    let dx = Math.abs(p.x - q.x);
-    let dy = Math.abs(p.y - q.y);
+    let dx = Math.abs(p.position.x - q.position.x);
+    let dy = Math.abs(p.position.y - q.position.y);
     let result = Math.pow(dx, 2) + Math.pow(dy, 2);
     return Math.floor(result*1000)/1000;
 }
@@ -83,10 +83,10 @@ class KdTree {
         }
         let cmp;
         if (isVertical) {
-            cmp = compareDouble(point.x, node.point[0].x);
+            cmp = compareDouble(point.position.x, node.point[0].position.x);
         }
         else {
-            cmp = compareDouble(point.y, node.point[0].y);
+            cmp = compareDouble(point.position.y, node.point[0].position.y);
         }
         if (cmp === -1) {
             node.lb = this.put(node.lb, point, node, !isVertical);
@@ -127,10 +127,10 @@ class KdTree {
         }
         let cmp;
         if (isVertical) { // take lb branch if node.point is greater than query
-            cmp = compareDouble(node.point[0].x, queryPoint.x);
+            cmp = compareDouble(node.point[0].position.x, queryPoint.position.x);
         }
         else {
-            cmp = compareDouble(node.point[0].y, queryPoint.y);
+            cmp = compareDouble(node.point[0].position.y, queryPoint.position.y);
         }
         if (cmp === 1) {
             nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
@@ -152,8 +152,8 @@ class KdTree {
 
     otherBranchDistSquared(nearest, node, vertical) {
         let distance;
-        if (vertical) distance = Math.abs(node.point[0].x - nearest.x);
-        else distance = Math.abs(node.point[0].y - nearest.y);
+        if (vertical) distance = Math.abs(node.point[0].position.x - nearest.position.x);
+        else distance = Math.abs(node.point[0].position.y - nearest.position.y);
         return distance * distance;
     }
 
@@ -176,21 +176,21 @@ class KdTree {
             cmp = 0;
         }
         else if (isVertical) {
-            if (compareDouble(node.point[0].x, rect.xmin) >= 0 &&
-                    compareDouble(node.point[0].x, rect.xmin) <= 0) {
+            if (compareDouble(node.point[0].position.x, rect.xmin) >= 0 &&
+                    compareDouble(node.point[0].position.x, rect.xmin) <= 0) {
                 cmp = 0;
             }
             else {
-                cmp = (compareDouble(node.point[0].x, rect.xmin) < 0) ? 1 : -1;
+                cmp = (compareDouble(node.point[0].position.x, rect.xmin) < 0) ? 1 : -1;
             }
         }
         else {
-            if (compareDouble(node.point[0].y, rect.ymin) >= 0 &&
-                    compareDouble(node.point[0].y, rect.ymax) <= 0) {
+            if (compareDouble(node.point[0].position.y, rect.ymin) >= 0 &&
+                    compareDouble(node.point[0].position.y, rect.ymax) <= 0) {
                 cmp = 0;
             }
             else {
-                cmp = (compareDouble(node.point[0].y, rect.ymin) < 0) ? 1 : -1;
+                cmp = (compareDouble(node.point[0].position.y, rect.ymin) < 0) ? 1 : -1;
             }
         }
         if (cmp === 0) {
@@ -220,16 +220,73 @@ class Rect {
     }
 
     contains(point) {
-        return point.x >= this.xmin && point.x <= this.xmax &&
-            point.y >= this.ymin && point.y <= this.ymax;
+        return point.position.x >= this.xmin && point.position.x <= this.xmax &&
+            point.position.y >= this.ymin && point.position.y <= this.ymax;
     }
 }
 
 
-class Point {
-    constructor(x, y, id, context, center, width, height) {
+class Vector {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
+    }
+
+    checkArgType(other) {
+        if (!(other instanceof this.constructor)) {
+            throw `Invalid arg: ${arguments.callee.name}: ${other.constructor}`
+        }
+    }
+
+    add(other) {
+        this.checkArgType(other);
+        this.x += other.x;
+        this.y += other.y;
+    }
+
+    subtract(other) {
+        this.checkArgType(other);
+        this.x -= other.x;
+        this.y -= other.y;
+    }
+
+    scale(scalar) {
+        if (isNaN(scalar)) {
+            throw 'Invalid argument';
+        }
+        this.x *= scalar;
+        this.y *= scalar;
+    }
+
+    divideBy(scalar) {
+        if (isNaN(scalar)) {
+            throw 'Invalid argument';
+        }
+        this.x /= scalar;
+        this.y /= scalar;
+    }
+
+    length() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    lengthSq() {
+        return this.x * this.x + this.y * this.y;
+    }
+
+    normalize() {
+        const m = this.length();
+        if (m) {
+            this.divideBy(m);
+        }
+    }
+}
+
+class Point {
+    constructor(x, y, id, context, center, width, height) {
+        this.position = new Vector(x, y);
+        this.lastPos = null;
+        this.accel = new Vector(1, 1);
         this.id = id;
         if (context) {
             this.width = width;
@@ -244,32 +301,14 @@ class Point {
     }
 
     angleInRadiansFrom(that) {
-        return Math.atan2(this.y - that.y, this.x - that.x);
+        return Math.atan2(
+            this.position.y - that.position.y,
+            this.position.x - that.position.x
+        );
     }
 
     move(nextRot, speed) {
-        this.rotation = (this.rotation + nextRot) / 2;
-        let dx = this.getDx();
-        let dy = this.getDy();
-        if (this.x + dx > this.width || this.x + dx < 0 ) {
-            dx = -dx;
-            this.rotation = Math.PI - this.rotation;
-        }
-        if (this.y + dy > this.height || this.y + dy < 0) {
-            dy = -dy;
-            this.rotation = -this.rotation;
-        }
-        if (speed < MAX_SPEED) {
-            this.speed = speed * ACCEL;
-        }
-        else if (speed > MAX_SPEED) {
-            this.speed = MAX_SPEED;
-        }
-        else if (speed < MIN_SPEED) {
-            this.speed = MIN_SPEED;
-        }
-        this.x += dx;
-        this.y += dy;
+        this.position.add(this.accel);
     }
 
     getDx() {
@@ -285,18 +324,21 @@ class Point {
     }
 
     compareTo(that) {
-        if (this.y < that.y) return -1;
-        else if (this.y > that.y) return 1;
-        else if (this.x < that.x) return -1;
-        else if (this.x > that.x) return 1;
+        if (this.position.y < that.position.y) return -1;
+        else if (this.position.y > that.position.y) return 1;
+        else if (this.position.x < that.position.x) return -1;
+        else if (this.position.x > that.position.x) return 1;
         else return 0;
     }
 
     slopeTo(that) {
-        if (this.x == that.x && this.y == that.y) return -Infinity;
-        else if (this.y == that.y) return 0.0;
-        else if (this.x == that.x) return Infinity;
-        else return (that.y - this.y) / (that.x - this.x);
+        if (this.position.x == that.position.x &&
+            this.position.y == that.position.y)
+            return -Infinity;
+        else if (this.position.y == that.position.y) return 0.0;
+        else if (this.position.x == that.position.x) return Infinity;
+        else return (that.position.y - this.position.y) /
+            (that.position.x - this.position.x);
     }
 }
 
@@ -306,6 +348,7 @@ class Animation {
         this.width = document.querySelector('.container0').clientWidth;
         this.height = document.querySelector('.container0').clientHeight;
         this.center = {'x': Math.floor(this.width/2), 'y': Math.floor(this.height/2)};
+        this.center = this.newPoint(this.center.x, this.center.y);
         this.centerOfMass = this.newPoint(this.center.x, this.center.y);
         container0.innerHTML = '<canvas id="point_ctx" width="' + this.width + '" height="' + this.height + '"></canvas>';
         container1.innerHTML = '<canvas id="line_ctx" width="' + this.width + '" height="' + this.height + '"></canvas>';
@@ -377,8 +420,8 @@ class Animation {
             }
             let nextVelocity = {'speed': null, 'rotation': null};
             if (document.querySelector('#flock-opt').checked &&
-                    point.x > 50 && point.x < this.width - 50 &&
-                    point.y > 50 && point.y < this.height - 50) {
+                    point.position.x > 50 && point.position.x < this.width - 50 &&
+                    point.position.y > 50 && point.position.y < this.height - 50) {
                 nextVelocity = this.getRangeAverages(point, tree);
             }
             else if (distanceSquared(point, point.nearest) < 5) {
@@ -398,23 +441,23 @@ class Animation {
 
     drawPoint(point, context) {
         context.beginPath();
-        context.arc(point.x, point.y, point.speed*2.5, 0, 2*Math.PI, true);
+        context.arc(point.position.x, point.position.y, point.speed*2.5, 0, 2*Math.PI, true);
         context.fill();
     }
 
     drawLine(b1, b2, context) {
         context.strokeStyle = 'rgb(100, 155, 155)';
         context.beginPath();
-        context.moveTo(b1.x, b1.y);
-        context.lineTo(b2.x, b2.y);
+        context.moveTo(b1.position.x, b1.position.y);
+        context.lineTo(b2.position.x, b2.position.y);
         context.stroke();
         context.strokeStyle = 'rgb(200, 255, 255)';
     }
  
     getRangeAverages(p, tree) {
         let rect = new Rect(
-            p.x - PROXIMITY, p.y - PROXIMITY,
-            p.x + PROXIMITY, p.y + PROXIMITY
+            p.position.x - PROXIMITY, p.position.y - PROXIMITY,
+            p.position.x + PROXIMITY, p.position.y + PROXIMITY
         )
         let neighbours = tree.range(rect);
         if (neighbours.length < 2) {
@@ -428,7 +471,7 @@ class Animation {
     drawCenterOfMass(context, point) {
         context.fillStyle = 'rgb(200, 255, 200)';
         context.beginPath();
-        context.arc(point.x, point.y, 10, 0, 2*Math.PI, true);
+        context.arc(point.position.x, point.position.y, 10, 0, 2*Math.PI, true);
         context.fill();
         context.fillStyle = 'rgb(200, 255, 255)';
     }
