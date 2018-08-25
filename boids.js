@@ -232,20 +232,27 @@ class Vector {
         this.y = y;
     }
 
-    checkArgType(other) {
-        if (!(other instanceof this.constructor)) {
+    static checkArgType(other) {
+        if (!(other instanceof Vector)) {
             throw `Invalid arg: ${arguments.callee.name}: ${other.constructor}`
         }
     }
 
+    limit(max) {
+        if (this.length() > max) {
+            this.normalize();
+            this.scale(max);
+        }
+    }
+
     add(other) {
-        this.checkArgType(other);
+        Vector.checkArgType(other);
         this.x += other.x;
         this.y += other.y;
     }
 
     subtract(other) {
-        this.checkArgType(other);
+        Vector.checkArgType(other);
         this.x -= other.x;
         this.y -= other.y;
     }
@@ -280,13 +287,19 @@ class Vector {
             this.divideBy(m);
         }
     }
+
+    copy() {
+        return new Vector(this.x, this.y);
+    }
 }
 
 class Point {
     constructor(x, y, id, context, center, width, height) {
+        this.mass = 3;
         this.position = new Vector(x, y);
+        this.velocity = new Vector(0, 0);
         this.lastPos = null;
-        this.accel = new Vector(1, 1);
+        this.accel = new Vector(0.001, 0.001);
         this.id = id;
         if (context) {
             this.width = width;
@@ -300,6 +313,11 @@ class Point {
         }
     }
 
+    applyForce(force) {
+        Vector.checkArgType(force);
+        this.accel.add(force);
+    }
+
     angleInRadiansFrom(that) {
         return Math.atan2(
             this.position.y - that.position.y,
@@ -307,8 +325,11 @@ class Point {
         );
     }
 
-    move(nextRot, speed) {
-        this.position.add(this.accel);
+    move() {
+        this.velocity.add(this.accel);
+        this.velocity.limit(10);
+        this.position.add(this.velocity);
+        this.accel.scale(0);
     }
 
     getDx() {
@@ -350,8 +371,8 @@ class Animation {
         this.center = {'x': Math.floor(this.width/2), 'y': Math.floor(this.height/2)};
         this.center = this.newPoint(this.center.x, this.center.y);
         this.centerOfMass = this.newPoint(this.center.x, this.center.y);
-        container0.innerHTML = '<canvas id="point_ctx" width="' + this.width + '" height="' + this.height + '"></canvas>';
-        container1.innerHTML = '<canvas id="line_ctx" width="' + this.width + '" height="' + this.height + '"></canvas>';
+        container0.innerHTML = `<canvas id="point_ctx" width="${this.width}" height="${this.height}"></canvas>`;
+        container1.innerHTML = `<canvas id="line_ctx" width="${this.width}" height="${this.height}"></canvas>`;
         this.canvas0 = document.querySelector('#point_ctx');
         this.canvas1 = document.querySelector('#line_ctx');
         this.line_ctx = this.canvas0.getContext('2d');
@@ -432,6 +453,11 @@ class Animation {
                 nextVelocity.rotation = point.rotation;
                 nextVelocity.speed = point.speed;
             }
+            const grav = this.center.position.copy();
+            grav.subtract(point.position);
+            grav.normalize();
+            grav.divideBy(5)
+            point.applyForce(grav);
             point.move(nextVelocity.rotation, nextVelocity.speed);
         });
         if (this.doAnim) {
@@ -441,7 +467,7 @@ class Animation {
 
     drawPoint(point, context) {
         context.beginPath();
-        context.arc(point.position.x, point.position.y, point.speed*2.5, 0, 2*Math.PI, true);
+        context.arc(point.position.x, point.position.y, point.mass, 0, 2*Math.PI, true);
         context.fill();
     }
 
