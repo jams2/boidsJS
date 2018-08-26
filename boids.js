@@ -3,10 +3,11 @@ const MIN_SPEED = 1;
 const ACCEL = 1.001;
 const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
-const START_COUNT = 50;
+const START_COUNT = 100;
 const FULL_ROT = 2 * Math.PI;
-const PROXIMITY = 0;
-const G = 5;
+const PROXIMITY = 20;
+const G = 0.5;
+const C = 0.09;
 
 function equalPoints(p1, p2) {
     return Math.floor(p1.position.x * 10000) === Math.floor(p2.position.x * 10000) &&
@@ -346,7 +347,7 @@ class Point {
 
     move() {
         this.velocity.add(this.accel);
-        this.velocity.limit(15);
+        this.velocity.limit(5);
         this.position.add(this.velocity);
         this.accel.scale(0);
     }
@@ -458,15 +459,80 @@ class Animation {
                 this.drawLine(point.nearest, point, this.line_ctx);
                 neighbourDrawn[point.id] = true;
             }
-            const flock = this.getRangeAverages(point, tree);
-            const edges = this.edgeGrav(point);
-            point.applyForce(flock);
-            point.applyForce(edges);
+            const pos = point.position;
+            if (pos.x < 0) {
+                const edge1 = Vector.subtract(new Vector(0, pos.y), pos);
+                const mag = edge1.length();
+                edge1.normalize();
+                edge1.scale(mag);
+                point.applyForce(edge1);
+            }
+            else if (pos.x > this.width) {
+                const edge1 = Vector.subtract(new Vector(this.width, pos.y), pos);
+                const mag = edge1.length();
+                edge1.normalize();
+                edge1.scale(mag);
+                point.applyForce(edge1);
+            }
+            if (pos.y < 0) {
+                const edge2 = Vector.subtract(new Vector(pos.x, 0), pos);
+                const mag = edge2.length();
+                edge2.normalize();
+                edge2.scale(mag);
+                point.applyForce(edge2);
+            }
+            else if (pos.y > this.height) {
+                const edge2 = Vector.subtract(new Vector(pos.x, this.height), pos);
+                const mag = edge2.length();
+                edge2.normalize();
+                edge2.scale(mag);
+                point.applyForce(edge2);
+            }
+            //if (point.nearest) {
+                //const neighbourGrav = this.getNeighbourGrav(point);
+                //point.applyForce(neighbourGrav);
+            //}
+            //const resistance = this.getResistance(point);
+            //point.applyForce(resistance);
+            const centerGrav = this.getCenterGrav(point);
+            point.applyForce(centerGrav);
             point.move();
         });
         if (this.doAnim) {
            window.requestAnimationFrame(()=> this.animate());
         }
+    }
+
+    getCenterGrav(point) {
+        const dir = Vector.subtract(this.center.position, point.position);
+        const mag = dir.length();
+        dir.normalize();
+        const grav = (G * point.mass * 5) / (mag * mag);
+        dir.scale(grav);
+        return dir;
+    }
+
+    getResistance(point) {
+        const speed = point.velocity.length();
+        // get half circumference of circle for frontal area - mass is radius
+        const frontalArea = Math.PI * point.mass;
+        const dragMagnitude = frontalArea * C * speed * speed;
+        const drag = point.velocity.copy();
+        drag.normalize();
+        drag.scale(-1);
+        drag.scale(dragMagnitude);
+        return drag;
+    }
+
+    getNeighbourGrav(point) {
+        const pos = point.position;
+        const neighbour = point.nearest.position;
+        const dir = Vector.subtract(neighbour, pos);
+        const dist = dir.length();
+        const m = (G * point.mass * point.nearest.mass) / (dist * dist);
+        dir.normalize();
+        dir.scale(m);
+        return dir;
     }
 
     edgeGrav(point) {
