@@ -5,9 +5,9 @@ const DECEL = Math.PI / MAX_SPEED;
 const ROTATION_RATE = 0.4;
 const START_COUNT = 100;
 const FULL_ROT = 2 * Math.PI;
-const PROXIMITY = 20;
-const G = 0.5;
-const C = 0.09;
+const PROXIMITY = 2;
+const G = 43;
+const C = 0.000001;
 
 function equalPoints(p1, p2) {
     return Math.floor(p1.position.x * 10000) === Math.floor(p2.position.x * 10000) &&
@@ -28,6 +28,28 @@ function distanceSquared(p, q) {
     let dy = Math.abs(p.position.y - q.position.y);
     let result = Math.pow(dx, 2) + Math.pow(dy, 2);
     return Math.floor(result*1000)/1000;
+}
+
+
+class AudioSource {
+    constructor() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.analyser = this.ctx.createAnalyser();
+        navigator.mediaDevices.getUserMedia(
+            {audio: true, video: false}
+        ).then(stream => {
+            this.source = this.ctx.createMediaStreamSource(stream)
+        }).then(()=> this.source.connect(this.analyser));
+        this.analyser.fftSize = 256;
+        this.analyser.maxDecibels = 50;
+        this.analyser.minDecibels = -70;
+        this.bufferLength = this.analyser.frequencyBinCount;
+        this.freqData = new Uint8Array(this.bufferLength);
+    }
+
+    update() {
+        this.analyser.getByteFrequencyData(this.freqData);
+    }
 }
 
 
@@ -314,7 +336,7 @@ class Vector {
 
 class Point {
     constructor(x, y, id, context, center, width, height) {
-        this.mass = Math.floor(Math.random() * (7 - 3) + 3);
+        this.mass = Math.floor(Math.random() * (16 - 2) + 2);
         this.position = new Vector(x, y);
         this.velocity = new Vector(0, 0);
         this.lastPos = null;
@@ -347,7 +369,7 @@ class Point {
 
     move() {
         this.velocity.add(this.accel);
-        this.velocity.limit(5);
+        this.velocity.limit(15);
         this.position.add(this.velocity);
         this.accel.scale(0);
     }
@@ -384,7 +406,8 @@ class Point {
 }
 
 class Animation {
-    constructor(container0, container1) {
+    constructor(container0, container1, audio) {
+        this.analyser = audio;
         this.points = [];
         this.width = document.querySelector('.container0').clientWidth;
         this.height = document.querySelector('.container0').clientHeight;
@@ -444,6 +467,7 @@ class Animation {
     }
 
     animate() {
+        this.analyser.update();
         let tree = new KdTree();
         let neighbourDrawn = [];
         this.points.forEach(function(point){
@@ -488,13 +512,19 @@ class Animation {
                 edge2.scale(mag);
                 point.applyForce(edge2);
             }
-            //if (point.nearest) {
-                //const neighbourGrav = this.getNeighbourGrav(point);
-                //point.applyForce(neighbourGrav);
-            //}
-            //const resistance = this.getResistance(point);
-            //point.applyForce(resistance);
             const centerGrav = this.getCenterGrav(point);
+            const dir = point.position.copy();
+            const mag = dir.length();
+            dir.normalize();
+            const freqScalar = this.analyser.freqData[point.mass*8];
+            if (freqScalar) {
+                const scaled = freqScalar / 50;
+                const antiGrav = centerGrav.copy();
+                antiGrav.normalize();
+                antiGrav.scale(freqScalar);
+                antiGrav.scale(Math.round(Math.random()) || -1);
+                point.applyForce(antiGrav);
+            }
             point.applyForce(centerGrav);
             point.move();
         });
@@ -503,11 +533,24 @@ class Animation {
         }
     }
 
+    getFlockVector(point, range) {
+        if (!range.avg || !range.mass) return new Vector(1, 1);
+        const avgPos = range.avg;
+        const totalMass = range.mass / 5;
+        const pos = point.position;
+        const dir = Vector.subtract(avgPos, pos);
+        const mag = dir.length();
+        dir.normalize();
+        const grav = (0.001 * point.mass * totalMass) / (mag * mag);
+        dir.scale(grav);
+        return dir;
+    }
+
     getCenterGrav(point) {
         const dir = Vector.subtract(this.center.position, point.position);
         const mag = dir.length();
         dir.normalize();
-        const grav = (G * point.mass * 5) / (mag * mag);
+        const grav = (G * point.mass * 26) / (mag * mag);
         dir.scale(grav);
         return dir;
     }
@@ -600,12 +643,14 @@ class Animation {
         if (neighbours.length < 2) {
             return new Vector(1, 1);
         }
+        const mass = neighbours.map(x => x.mass);
+        const totalMass = mass.reduce((a, b) => a + b);
         const vectors = neighbours.map(x=>x.position);
         const sumVectors = vectors.reduce((acc, next) => {
             return Vector.add(acc, next);
         }, new Vector(0, 0));
-        const avg = Vector.divide(sumVectors, neighbours.length);
-        return avg;
+        const avgPos = Vector.divide(sumVectors, neighbours.length);
+        return { avg: avgPos, mass: totalMass };
     }
 
     drawCenterOfMass(context, point) {
@@ -619,8 +664,9 @@ class Animation {
 
 
 window.addEventListener("load", function() {
-    let container0 = document.querySelector('#container0');
-    let container1 = document.querySelector('#container1');
-    let anim = new Animation(container0, container1);
+    const container0 = document.querySelector('#container0');
+    const container1 = document.querySelector('#container1');
+    const analyser = new AudioSource();
+    const anim = new Animation(container0, container1, analyser);
     anim.animate();
 });
