@@ -67,8 +67,8 @@ class Animation {
 
     animate() {
         this.analyser.update();
-        let tree = new KdTree();
-        let neighbourDrawn = [];
+        const tree = new KdTree();
+        const neighbourDrawn = [];
         this.points.forEach(function(point){
             tree.insert(point);
         });
@@ -76,10 +76,11 @@ class Animation {
         this.line_ctx.clearRect(0, 0, this.width, this.height);
         this.points.forEach(point=>{
             point.nearest = tree.nearestNeighbour(point);
-            this.drawPoint(point, this.point_ctx);
+            const freqScalar = this.analyser.freqData[point.mass * 8];
+            this.drawPoint(point, this.point_ctx, freqScalar);
             if (document.querySelector('#neighbour-opt').checked &&
                     neighbourDrawn[point.id] === undefined) {
-                this.drawLine(point.nearest, point, this.line_ctx);
+                this.drawLine(point.nearest, point, this.line_ctx, freqScalar);
                 neighbourDrawn[point.id] = true;
             }
             const pos = point.position;
@@ -112,10 +113,11 @@ class Animation {
                 point.applyForce(edge2);
             }
             const centerGrav = point.getCenterGrav(this.center);
+            point.applyForce(centerGrav);
+            point.applyForce(point.getResistance());
             const dir = point.position.copy();
             const mag = dir.length();
             dir.normalize();
-            const freqScalar = this.analyser.freqData[point.mass*8];
             if (freqScalar) {
                 const scaled = freqScalar / 50;
                 const antiGrav = centerGrav.copy();
@@ -124,7 +126,6 @@ class Animation {
                 antiGrav.scale(Math.round(Math.random()) || -1);
                 point.applyForce(antiGrav);
             }
-            point.applyForce(centerGrav);
             point.move();
         });
         if (this.doAnim) {
@@ -132,14 +133,15 @@ class Animation {
         }
     }
 
-    drawPoint(point, context) {
+    drawPoint(point, context, intensity) {
+        context.fillStyle = `rgb(${(intensity - 1) * 10}, 50, 50)`;
         context.beginPath();
         context.arc(point.position.x, point.position.y, point.mass, 0, 2*Math.PI, true);
         context.fill();
     }
 
-    drawLine(b1, b2, context) {
-        context.strokeStyle = 'rgb(100, 155, 155)';
+    drawLine(b1, b2, context, intensity) {
+        context.strokeStyle = `rgb(${(intensity - 1) * 7}, 50, 50)`;
         context.beginPath();
         context.moveTo(b1.position.x, b1.position.y);
         context.lineTo(b2.position.x, b2.position.y);

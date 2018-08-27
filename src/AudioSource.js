@@ -9,7 +9,7 @@ class AudioSource {
         }).then(()=> this.source.connect(this.analyser));
         this.analyser.fftSize = 256;
         this.analyser.maxDecibels = 50;
-        this.analyser.minDecibels = -70;
+        this.analyser.minDecibels = -80;
         this.bufferLength = this.analyser.frequencyBinCount;
         this.freqData = new Uint8Array(this.bufferLength);
     }
