@@ -1,3 +1,13 @@
+class Node {
+    constructor(point, _parent) {
+        this.point = [point];
+        this._parent = _parent;
+        this.lb = null;
+        this.rt = null;
+    }
+}
+
+
 class KdTree {
     constructor() {
         this.size = 0;
@@ -189,4 +199,4 @@ function distanceSquared(p, q) {
     return Math.floor(result*1000)/1000;
 }
 
-export { KdTree, equalPoints, compareDouble, distanceSquared };
+export { Node, KdTree, equalPoints, compareDouble, distanceSquared };
