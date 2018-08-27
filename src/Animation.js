@@ -1,6 +1,6 @@
 import { MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C } from './constants';
 import { Point } from './Point';
-import { Node, KdTree, equalPoints, compareDouble, distanceSquared } from './KdTree'; 
+import { Node, KdTree, equalPoints, compareDouble, distanceSquared } from './KdTree';
 import { Vector } from './Vector';
 
 
@@ -44,19 +44,12 @@ class Animation {
         }
     }
 
-    static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit + 1)); }
-
-    static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
-
     gaussianRandomPoint() {
         return this.newPoint(Animation.gaussianRandom(this.width),
                              Animation.gaussianRandom(this.height));
     }
 
-    uniformRandomPoint() {
-        return this.newPoint(Animation.uniformRandom(this.width),
-                             Animation.uniformRandom(this.height));
-    }
+    static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit + 1)); }
 
     // gaussian random generator from https://stackoverflow.com/a/39187274
     static gaussianRand() {
@@ -64,6 +57,13 @@ class Animation {
         for (var i = 0; i < 6; i += 1) { rand += Math.random(); }
         return rand / 6;
     }
+
+    uniformRandomPoint() {
+        return this.newPoint(Animation.uniformRandom(this.width),
+                             Animation.uniformRandom(this.height));
+    }
+
+    static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
 
     animate() {
         this.analyser.update();
@@ -111,7 +111,7 @@ class Animation {
                 edge2.scale(mag);
                 point.applyForce(edge2);
             }
-            const centerGrav = this.getCenterGrav(point);
+            const centerGrav = point.getCenterGrav(this.center);
             const dir = point.position.copy();
             const mag = dir.length();
             dir.normalize();
@@ -132,92 +132,6 @@ class Animation {
         }
     }
 
-    getFlockVector(point, range) {
-        if (!range.avg || !range.mass) return new Vector(1, 1);
-        const avgPos = range.avg;
-        const totalMass = range.mass / 5;
-        const pos = point.position;
-        const dir = Vector.subtract(avgPos, pos);
-        const mag = dir.length();
-        dir.normalize();
-        const grav = (0.001 * point.mass * totalMass) / (mag * mag);
-        dir.scale(grav);
-        return dir;
-    }
-
-    getCenterGrav(point) {
-        const dir = Vector.subtract(this.center.position, point.position);
-        const mag = dir.length();
-        dir.normalize();
-        const grav = (G * point.mass * 26) / (mag * mag);
-        dir.scale(grav);
-        return dir;
-    }
-
-    getResistance(point) {
-        const speed = point.velocity.length();
-        // get half circumference of circle for frontal area - mass is radius
-        const frontalArea = Math.PI * point.mass;
-        const dragMagnitude = frontalArea * C * speed * speed;
-        const drag = point.velocity.copy();
-        drag.normalize();
-        drag.scale(-1);
-        drag.scale(dragMagnitude);
-        return drag;
-    }
-
-    getNeighbourGrav(point) {
-        const pos = point.position;
-        const neighbour = point.nearest.position;
-        const dir = Vector.subtract(neighbour, pos);
-        const dist = dir.length();
-        const m = (G * point.mass * point.nearest.mass) / (dist * dist);
-        dir.normalize();
-        dir.scale(m);
-        return dir;
-    }
-
-    edgeGrav(point) {
-        const north = Vector.subtract(point.position, new Vector(point.position.x, 0));
-        const dNorth = north.length()
-        const fNorth = (G * point.mass * 20) / dNorth * dNorth;
-        north.normalize();
-        north.scale(fNorth);
-        const east = Vector.subtract(point.position, new Vector(this.width, point.position.y));
-        const dEast = east.length()
-        const fEast = (G * point.mass * 20) / dEast * dEast;
-        east.normalize();
-        east.scale(fEast);
-        const south = Vector.subtract(point.position, new Vector(point.position.x, this.height));
-        const dSouth = south.length()
-        const fSouth = (G * point.mass * 20) / dSouth * dSouth;
-        south.normalize();
-        south.scale(fSouth);
-        const west = Vector.subtract(point.position, new Vector(0, point.position.y));
-        const dWest = west.length()
-        const fWest = (G * point.mass * 20) / dWest * dWest;
-        west.normalize();
-        west.scale(fWest);
-        const min = Math.min(dNorth, dEast, dSouth, dWest);
-        let selected = null;
-        switch (min) {
-            case dNorth:
-                selected = north;
-                break;
-            case dEast:
-                selected = east;
-                break;
-            case dSouth:
-                selected = south;
-                break;
-            case dWest:
-                selected = west;
-                break;
-        }
-        selected.scale(-1);
-        return selected;
-    }
-
     drawPoint(point, context) {
         context.beginPath();
         context.arc(point.position.x, point.position.y, point.mass, 0, 2*Math.PI, true);
@@ -231,33 +145,6 @@ class Animation {
         context.lineTo(b2.position.x, b2.position.y);
         context.stroke();
         context.strokeStyle = 'rgb(200, 255, 255)';
-    }
- 
-    getRangeAverages(p, tree) {
-        const rect = new Rect(
-            p.position.x - PROXIMITY, p.position.y - PROXIMITY,
-            p.position.x + PROXIMITY, p.position.y + PROXIMITY
-        )
-        const neighbours = tree.range(rect);
-        if (neighbours.length < 2) {
-            return new Vector(1, 1);
-        }
-        const mass = neighbours.map(x => x.mass);
-        const totalMass = mass.reduce((a, b) => a + b);
-        const vectors = neighbours.map(x=>x.position);
-        const sumVectors = vectors.reduce((acc, next) => {
-            return Vector.add(acc, next);
-        }, new Vector(0, 0));
-        const avgPos = Vector.divide(sumVectors, neighbours.length);
-        return { avg: avgPos, mass: totalMass };
-    }
-
-    drawCenterOfMass(context, point) {
-        context.fillStyle = 'rgb(200, 255, 200)';
-        context.beginPath();
-        context.arc(point.position.x, point.position.y, 10, 0, 2*Math.PI, true);
-        context.fill();
-        context.fillStyle = 'rgb(200, 255, 255)';
     }
 }
 
