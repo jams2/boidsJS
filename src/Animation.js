@@ -1,6 +1,6 @@
 import { MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C } from './constants';
 import { Point } from './Point';
-import { Node, KdTree, equalPoints, compareDouble, distanceSquared } from './KdTree';
+import { Node, KdTree, equalPoints, comparePosition, distanceSquared } from './KdTree';
 import { Vector } from './Vector';
 import { Rect } from './Rect';
 
@@ -67,34 +67,41 @@ class Animation {
 
     animate() {
         const tree = new KdTree();
-        const neighbourDrawn = [];
         this.points.forEach(function(point){
             tree.insert(point);
         });
-        this.point_ctx.clearRect(0, 0, this.width, this.height);
-        this.line_ctx.clearRect(0, 0, this.width, this.height);
+
+        // clear the canvas
+        this.point_ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        this.point_ctx.fillRect(0, 0, this.width, this.height);
+        //this.point_ctx.clearRect(0, 0, this.width, this.height);
 
         // main anim loop
+        this.point_ctx.fillStyle = 'rgb(255, 50, 50)';
+        this.point_ctx.beginPath();
         this.points.forEach(point=>{
             point.nearest = tree.nearestNeighbour(point);
             this.drawPoint(point, this.point_ctx, 50);
-            if (document.querySelector('#neighbour-opt').checked &&
-                    neighbourDrawn[point.id] === undefined) {
-                this.drawLine(point.nearest, point, this.line_ctx, 50);
-                neighbourDrawn[point.id] = true;
-            }
             const neighbours = point.getNeighbours(tree);
             if (neighbours !== null && point !== undefined) {
                 const avgPosition = point.getAvgPosition(neighbours);
                 point.applyForce(avgPosition);
-                //const avgVelocity = point.getAvgVelocity(neighbours);
-                //point.applyForce(avgVelocity);
+                const avgVelocity = point.getAvgVelocity(neighbours);
+                point.applyForce(avgVelocity);
             }
+            //const wind = new Vector(0, -100);
+            //const midX = this.width / 2;
+            //const end = midX + 50;
+            //const midY = this.height / 2;
+            //if (point.position.x >= midX && point.position.x <= end) {
+                //point.applyForce(wind);
+            //}
             point.avoidCollision();
             point.applyForce(point.getResistance());
             this.getBoundaryReflection(point);
             point.move();
         });
+        this.point_ctx.fill();
         if (this.doAnim) {
            window.requestAnimationFrame(()=> this.animate());
         }
@@ -112,35 +119,27 @@ class Animation {
 
     getBoundaryReflection(point) {
         const pos = point.position;
-        let edge1 = null;
-        let edge2 = null;
         if (pos.x < 0) {
             pos.x = this.width;
-            //pos.y = this.height - pos.y;
         }
         else if (pos.x > this.width) {
             pos.x = 0;
-            //pos.y = this.height - pos.y;
         }
         if (pos.y < 0) {
             pos.y = this.height;
-            //pos.x = this.width - pos.x;
         }
         else if (pos.y > this.height) {
             pos.y = 0;
-            //pos.x = this.width - pos.x;
         }
     }
 
-    drawPoint(point, context, intensity) {
-        context.fillStyle = `rgb(${(intensity - 1) * 10}, 50, 50)`;
-        context.beginPath();
+    drawPoint(point, context) {
+        context.moveTo(point.position.x, point.position.y);
         context.arc(point.position.x, point.position.y, point.mass, 0, 2*Math.PI, true);
-        context.fill();
     }
 
-    drawLine(b1, b2, context, intensity) {
-        context.strokeStyle = `rgb(${(intensity - 1) * 7}, 50, 50)`;
+    drawLine(b1, b2, context) {
+        context.strokeStyle = 'rgb(255, 50, 50)';
         context.beginPath();
         context.moveTo(b1.position.x, b1.position.y);
         context.lineTo(b2.position.x, b2.position.y);

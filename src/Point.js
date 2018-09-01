@@ -8,11 +8,11 @@ import {
 
 class Point {
     constructor(x, y, id) {
-        this.mass = Math.floor(4);
+        this.mass = 3;
         this.position = new Vector(x, y);
-        this.velocity = new Vector(2, 2);
+        this.velocity = new Vector(Math.floor(Math.random() * 6), Math.floor(Math.random() * 6));
         this.lastPos = null;
-        this.accel = new Vector(0.001, 0.001);
+        this.accel = new Vector(0.0001, 0.0001);
         this.id = id;
     }
 
@@ -40,11 +40,18 @@ class Point {
             const delta = Vector.subtract(
                 new Vector(0, 0),
                 Vector.subtract(
-                    this.position, this.nearest.position
+                    this.nearest.position, this.position
                 )
             );
             this.applyForce(delta);
         }
+    }
+
+    tendTowards(position, scalar) {
+        const towards = Vector.subtract(position, this.position);
+        towards.divideBy(100);
+        towards.scale(scalar);
+        return towards;
     }
 
     move() {
@@ -141,28 +148,32 @@ class Point {
     }
 
     getAvgPosition(neighbours) {
-        const vectors = neighbours.map(x => x.position);
-        const avgPosition = this.getVectorMean(vectors);
-        avgPosition.scale(FLOCK_POSITION_SCALAR);
-        return avgPosition;
+        const avgPosition = this.getVectorMean(neighbours, 'position');
+        const dir = Vector.subtract(avgPosition, this.position);
+        dir.normalize();
+        dir.scale(0.5);
+        return dir;
     }
 
     getAvgVelocity(neighbours) {
-        const vectors = neighbours.map(x => x.velocity);
-        const avgVelocity = this.getVectorMean(vectors);
-        avgVelocity.scale(FLOCK_VELOCITY_SCALAR);
-        return avgVelocity;
+        const avgVelocity = this.getVectorMean(neighbours, 'velocity');
+        const dir = Vector.subtract(avgVelocity, this.velocity);
+        dir.normalize;
+        dir.scale(0.5);
+        return dir;
     }
 
-    getVectorMean(vectors) {
-        const sumVectors = vectors.reduce((acc, next) => {
-            if (next.x === this.x && next.y === this.y) {
-                return acc;
+    getVectorMean(vectors, property) {
+        const len = vectors.length;
+        const sumVectors = new Vector(0, 0);
+        for (let i = 0; i < len; i++) {
+            if (vectors[i].id === this.id) {
+                continue;
             }
-            return Vector.add(acc, next);
-        }, new Vector(0, 0));
-        const avg = Vector.divide(sumVectors, vectors.length - 1);
-        return avg;
+            sumVectors.add(vectors[i][property]);
+        }
+        sumVectors.divideBy(len - 1);
+        return sumVectors;
     }
 }
 

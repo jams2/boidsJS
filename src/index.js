@@ -1,5 +1,5 @@
 import { MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C } from './constants';
-import { Node, KdTree, equalPoints, compareDouble, distanceSquared } from './KdTree'; 
+import { Node, KdTree, equalPoints, comparePosition, distanceSquared } from './KdTree'; 
 import { AudioSource } from './AudioSource';
 import { Rect } from './Rect';
 import { Vector } from './Vector';
