@@ -1,15 +1,25 @@
 import { Vector } from './Vector';
-import { MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C } from './constants';
+import { Rect } from './Rect';
+import {
+    FLOCK_POSITION_SCALAR, MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C,
+    COLLISION, FLOCK_VELOCITY_SCALAR
+} from './constants';
 
 
 class Point {
     constructor(x, y, id) {
-        this.mass = Math.floor(Math.random() * (16 - 2) + 2);
+        this.mass = Math.floor(4);
         this.position = new Vector(x, y);
-        this.velocity = new Vector(0, 0);
+        this.velocity = new Vector(2, 2);
         this.lastPos = null;
         this.accel = new Vector(0.001, 0.001);
         this.id = id;
+    }
+
+    distToNearest() {
+        const dir = Vector.subtract(this.position, this.nearest.position);
+        const length = dir.length();
+        return length;
     }
 
     applyForce(force) {
@@ -25,11 +35,25 @@ class Point {
         );
     }
 
+    avoidCollision() {
+        if (this.distToNearest() < COLLISION) {
+            const delta = Vector.subtract(
+                new Vector(0, 0),
+                Vector.subtract(
+                    this.position, this.nearest.position
+                )
+            );
+            this.applyForce(delta);
+        }
+    }
+
     move() {
         this.velocity.add(this.accel);
-        this.velocity.limit(15);
+        this.velocity.limit(MAX_SPEED);
         this.position.add(this.velocity);
         this.accel.scale(0);
+        this.position.x = Math.floor(this.position.x);
+        this.position.y = Math.floor(this.position.y);
     }
 
     getDx() {
@@ -63,16 +87,13 @@ class Point {
     }
 
     getFlockVector(range) {
-        if (!range.avg || !range.mass) return new Vector(1, 1);
-        const avgPos = range.avg;
-        const totalMass = range.mass / 5;
-        const pos = this.position;
-        const dir = Vector.subtract(avgPos, pos);
-        const mag = dir.length();
-        dir.normalize();
-        const grav = (0.001 * point.mass * totalMass) / (mag * mag);
-        dir.scale(grav);
-        return dir;
+        if (!range.avgPos || !range.avgVel) {
+            return new Vector(0, 0)
+        }
+        range.avgPos.divideBy(100);
+        range.avgPos.scale(FLOCK_POSITION_SCALAR);
+        range.avgVel.divideBy(100);
+        return range.avg;
     }
 
     getCenterGrav(centerPoint) {
@@ -107,23 +128,41 @@ class Point {
         return dir;
     }
 
-    getRangeAverages(tree) {
+    getNeighbours(tree) {
         const rect = new Rect(
             this.position.x - PROXIMITY, this.position.y - PROXIMITY,
             this.position.x + PROXIMITY, this.position.y + PROXIMITY
         )
         const neighbours = tree.range(rect);
         if (neighbours.length < 2) {
-            return new Vector(1, 1);
+            return null;
         }
-        const mass = neighbours.map(x => x.mass);
-        const totalMass = mass.reduce((a, b) => a + b);
-        const vectors = neighbours.map(x=>x.position);
+        return neighbours;
+    }
+
+    getAvgPosition(neighbours) {
+        const vectors = neighbours.map(x => x.position);
+        const avgPosition = this.getVectorMean(vectors);
+        avgPosition.scale(FLOCK_POSITION_SCALAR);
+        return avgPosition;
+    }
+
+    getAvgVelocity(neighbours) {
+        const vectors = neighbours.map(x => x.velocity);
+        const avgVelocity = this.getVectorMean(vectors);
+        avgVelocity.scale(FLOCK_VELOCITY_SCALAR);
+        return avgVelocity;
+    }
+
+    getVectorMean(vectors) {
         const sumVectors = vectors.reduce((acc, next) => {
+            if (next.x === this.x && next.y === this.y) {
+                return acc;
+            }
             return Vector.add(acc, next);
         }, new Vector(0, 0));
-        const avgPos = Vector.divide(sumVectors, neighbours.length);
-        return { avg: avgPos, mass: totalMass };
+        const avg = Vector.divide(sumVectors, vectors.length - 1);
+        return avg;
     }
 }
 

@@ -2,11 +2,11 @@ import { MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C } from './constants'
 import { Point } from './Point';
 import { Node, KdTree, equalPoints, compareDouble, distanceSquared } from './KdTree';
 import { Vector } from './Vector';
+import { Rect } from './Rect';
 
 
 class Animation {
-    constructor(container0, container1, audio) {
-        this.analyser = audio;
+    constructor(container0, container1) {
         this.points = [];
         this.width = document.querySelector('.container0').clientWidth;
         this.height = document.querySelector('.container0').clientHeight;
@@ -66,7 +66,6 @@ class Animation {
     static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
 
     animate() {
-        this.analyser.update();
         const tree = new KdTree();
         const neighbourDrawn = [];
         this.points.forEach(function(point){
@@ -74,62 +73,62 @@ class Animation {
         });
         this.point_ctx.clearRect(0, 0, this.width, this.height);
         this.line_ctx.clearRect(0, 0, this.width, this.height);
+
+        // main anim loop
         this.points.forEach(point=>{
             point.nearest = tree.nearestNeighbour(point);
-            const freqScalar = this.analyser.freqData[point.mass * 8];
-            this.drawPoint(point, this.point_ctx, freqScalar);
+            this.drawPoint(point, this.point_ctx, 50);
             if (document.querySelector('#neighbour-opt').checked &&
                     neighbourDrawn[point.id] === undefined) {
-                this.drawLine(point.nearest, point, this.line_ctx, freqScalar);
+                this.drawLine(point.nearest, point, this.line_ctx, 50);
                 neighbourDrawn[point.id] = true;
             }
-            const pos = point.position;
-            if (pos.x < 0) {
-                const edge1 = Vector.subtract(new Vector(0, pos.y), pos);
-                const mag = edge1.length();
-                edge1.normalize();
-                edge1.scale(mag);
-                point.applyForce(edge1);
+            const neighbours = point.getNeighbours(tree);
+            if (neighbours !== null && point !== undefined) {
+                const avgPosition = point.getAvgPosition(neighbours);
+                point.applyForce(avgPosition);
+                //const avgVelocity = point.getAvgVelocity(neighbours);
+                //point.applyForce(avgVelocity);
             }
-            else if (pos.x > this.width) {
-                const edge1 = Vector.subtract(new Vector(this.width, pos.y), pos);
-                const mag = edge1.length();
-                edge1.normalize();
-                edge1.scale(mag);
-                point.applyForce(edge1);
-            }
-            if (pos.y < 0) {
-                const edge2 = Vector.subtract(new Vector(pos.x, 0), pos);
-                const mag = edge2.length();
-                edge2.normalize();
-                edge2.scale(mag);
-                point.applyForce(edge2);
-            }
-            else if (pos.y > this.height) {
-                const edge2 = Vector.subtract(new Vector(pos.x, this.height), pos);
-                const mag = edge2.length();
-                edge2.normalize();
-                edge2.scale(mag);
-                point.applyForce(edge2);
-            }
-            const centerGrav = point.getCenterGrav(this.center);
-            point.applyForce(centerGrav);
+            point.avoidCollision();
             point.applyForce(point.getResistance());
-            const dir = point.position.copy();
-            const mag = dir.length();
-            dir.normalize();
-            if (freqScalar) {
-                const scaled = freqScalar / 50;
-                const antiGrav = centerGrav.copy();
-                antiGrav.normalize();
-                antiGrav.scale(freqScalar);
-                antiGrav.scale(Math.round(Math.random()) || -1);
-                point.applyForce(antiGrav);
-            }
+            this.getBoundaryReflection(point);
             point.move();
         });
         if (this.doAnim) {
            window.requestAnimationFrame(()=> this.animate());
+        }
+    }
+
+    getNeighbouringPoints(point, tree) {
+        const pos = point.position;
+        const rect = new Rect(
+            pos.x - PROXIMITY, pos.y - PROXIMITY,
+            pos.x + PROXIMITY, pos.y + PROXIMITY
+        )
+        const neighbours = tree.range(rect);
+        return neighbours;
+    }
+
+    getBoundaryReflection(point) {
+        const pos = point.position;
+        let edge1 = null;
+        let edge2 = null;
+        if (pos.x < 0) {
+            pos.x = this.width;
+            //pos.y = this.height - pos.y;
+        }
+        else if (pos.x > this.width) {
+            pos.x = 0;
+            //pos.y = this.height - pos.y;
+        }
+        if (pos.y < 0) {
+            pos.y = this.height;
+            //pos.x = this.width - pos.x;
+        }
+        else if (pos.y > this.height) {
+            pos.y = 0;
+            //pos.x = this.width - pos.x;
         }
     }
 

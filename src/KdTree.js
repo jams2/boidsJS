@@ -129,7 +129,9 @@ class KdTree {
     range(rect) {
         /******************************************************************************************
          * rect: 2d Rect object
-         * Return an array of all points within the 2d range. Interface to KdTree.getRange
+         * Return an array of all points within the 2d range. Interface to KdTree.getRange.
+         * If called in reference to a point, e.g. in Point.getNeighhbours, that point will
+         * be included in the returned stack.
          *****************************************************************************************/
         if (rect === null) throw 'Invalid argument';
         let stack = [];

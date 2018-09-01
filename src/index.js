@@ -10,7 +10,6 @@ import { Animation } from './Animation';
 window.addEventListener("load", function() {
     const container0 = document.querySelector('#container0');
     const container1 = document.querySelector('#container1');
-    const analyser = new AudioSource();
-    const anim = new Animation(container0, container1, analyser);
+    const anim = new Animation(container0, container1);
     anim.animate();
 });
