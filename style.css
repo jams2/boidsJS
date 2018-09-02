@@ -94,6 +94,13 @@ table {
   color: #AAFFFF;
   vertical-align: middle;
 }
+.dashboard__span {
+  color: #AAFFFF;
+}
+.dashboard__span-right {
+  color: #AAFFFF;
+  float: right;
+}
 input {
   margin: 0;
   display: inline-block;

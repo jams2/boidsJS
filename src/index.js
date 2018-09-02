@@ -5,6 +5,7 @@ import { Rect } from './Rect';
 import { Vector } from './Vector';
 import { Point } from './Point';
 import { Animation } from './Animation';
+import { Circle } from './Circle';
 
 
 window.addEventListener("load", function() {

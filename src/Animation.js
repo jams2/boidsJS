@@ -1,12 +1,16 @@
-import { MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C } from './constants';
+import {
+    MOUSE_RADIUS, MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C
+} from './constants';
 import { Point } from './Point';
 import { Node, KdTree, equalPoints, comparePosition, distanceSquared } from './KdTree';
 import { Vector } from './Vector';
 import { Rect } from './Rect';
+import { Circle } from './Circle';
 
 
 class Animation {
     constructor(container0, container1) {
+        this.fpsDisplay = document.querySelector('#fps');
         this.points = [];
         this.width = document.querySelector('.container0').clientWidth;
         this.height = document.querySelector('.container0').clientHeight;
@@ -23,10 +27,28 @@ class Animation {
         this.generatePoints(START_COUNT, this.gaussianRandomPoint);
         this.canvas1.addEventListener('click', (elt)=> this.pointFromClick(elt));
         this.doAnim = true;
+        this.mouseX = null;
+        this.mouseY = null;
+        this.circle = null;
+        this.mouseListener = this.handleMouseMove.bind(this);
+        this.times = [];
+        this.fps = 0;
+        window.addEventListener('mousemove', this.mouseListener);
         document.querySelector('#stop').addEventListener('click', ()=> {
             this.doAnim = !this.doAnim;
             if (this.doAnim) this.animate();
         });
+    }
+
+    handleMouseMove(event) {
+        this.mouseX = event.clientX;
+        this.mouseY = event.clientY;
+        if (this.circle === null || this.circle === undefined) {
+            this.circle = new Circle(this.mouseX, this.mouseY, MOUSE_RADIUS);
+        }
+        else {
+            this.circle.update(this.mouseX, this.mouseY);
+        }
     }
 
     newPoint(x, y) {
@@ -65,7 +87,19 @@ class Animation {
 
     static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
 
+    updateFps(now) {
+        // https://stackoverflow.com/a/48036361
+        while (this.times.length > 0 && this.times[0] <= now - 1000) {
+          this.times.shift();
+        }
+        this.times.push(now);
+        this.fps = this.times.length;
+        this.fpsDisplay.innerHTML = this.fps;
+    }
+
     animate() {
+        const now = performance.now();
+        this.updateFps(now);
         const tree = new KdTree();
         this.points.forEach(function(point){
             tree.insert(point);
@@ -101,6 +135,20 @@ class Animation {
             this.getBoundaryReflection(point);
             point.move();
         });
+
+        if (this.circle !== null) {
+            const pointsNearMouse = tree.range(this.circle.boundingRect);
+            if (pointsNearMouse) {
+                const len = pointsNearMouse.length;
+                const center = new Vector(this.mouseX, this.mouseY);
+                for (let i = 0; i < len; i++) {
+                    const point = this.points[i];
+                    if (this.circle.contains(point)) {
+                        point.attractTo(center);
+                    }
+                }
+            }
+        }
         this.point_ctx.fill();
         if (this.doAnim) {
            window.requestAnimationFrame(()=> this.animate());

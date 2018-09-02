@@ -2,7 +2,7 @@ import { Vector } from './Vector';
 import { Rect } from './Rect';
 import {
     FLOCK_POSITION_SCALAR, MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C,
-    COLLISION, FLOCK_VELOCITY_SCALAR
+    COLLISION, FLOCK_VELOCITY_SCALAR, MOUSE_REPEL
 } from './constants';
 
 
@@ -52,6 +52,13 @@ class Point {
         towards.divideBy(100);
         towards.scale(scalar);
         return towards;
+    }
+
+    attractTo(position) {
+        const dir = Vector.subtract(position, this.position);
+        dir.normalize();
+        dir.scale(MOUSE_REPEL);
+        this.applyForce(dir);
     }
 
     move() {
