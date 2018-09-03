@@ -30,10 +30,8 @@ class Animation {
         this.mouseX = null;
         this.mouseY = null;
         this.circle = null;
-        this.mouseListener = this.handleMouseMove.bind(this);
         this.times = [];
         this.fps = 0;
-        window.addEventListener('mousemove', this.mouseListener);
         document.querySelector('#stop').addEventListener('click', ()=> {
             this.doAnim = !this.doAnim;
             if (this.doAnim) this.animate();
@@ -194,6 +192,10 @@ class Animation {
         context.stroke();
         context.strokeStyle = 'rgb(200, 255, 255)';
     }
+}
+
+function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + 1;
 }
 
 
