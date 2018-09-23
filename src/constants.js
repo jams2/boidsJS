@@ -1,6 +1,6 @@
 const MAX_SPEED = 10;
 const MIN_SPEED = 0.1;
-const START_COUNT = 800;
+const START_COUNT = 900;
 const PROXIMITY = 100;
 const G = 43;
 const C = 0.001;

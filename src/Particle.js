@@ -6,7 +6,7 @@ import {
 } from './constants';
 
 
-class Point {
+class Particle {
     constructor(x, y, id) {
         this.mass = 3;
         this.position = new Vector(x, y);
@@ -14,12 +14,18 @@ class Point {
         this.lastPos = null;
         this.accel = new Vector(0.0001, 0.0001);
         this.id = id;
+        this.nearest = null;
     }
 
     distToNearest() {
         const dir = Vector.subtract(this.position, this.nearest.position);
         const length = dir.length();
         return length;
+    }
+
+    distSquaredTo(other) {
+        const dir = Vector.subtract(this.position, other.position);
+        return dir.lengthSq();
     }
 
     applyForce(force) {
@@ -35,6 +41,17 @@ class Point {
         );
     }
 
+    collide() {
+        if (this.nearest === null) {
+            return;
+        }
+        else if (this.distSquaredTo(this.nearest) <= 20) {
+            const tmp = this.nearest.velocity;
+            this.nearest.velocity = this.velocity;
+            this.velocity = tmp;
+        }
+    }
+
     avoidCollision() {
         if (this.distToNearest() < COLLISION) {
             const delta = Vector.subtract(
@@ -43,6 +60,7 @@ class Point {
                     this.nearest.position, this.position
                 )
             );
+            delta.scale(0.75);
             this.applyForce(delta);
         }
     }
@@ -110,8 +128,8 @@ class Point {
         return range.avg;
     }
 
-    getCenterGrav(centerPoint) {
-        const dir = Vector.subtract(centerPoint.position, this.position);
+    getCenterGrav(centerParticle) {
+        const dir = Vector.subtract(centerParticle.position, this.position);
         const mag = dir.length();
         dir.normalize();
         const grav = (G * this.mass * 26) / (mag * mag);
@@ -185,4 +203,4 @@ class Point {
 }
 
 
-export { Point };
+export { Particle };

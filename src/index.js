@@ -3,7 +3,7 @@ import { Node, KdTree, equalPoints, comparePosition, distanceSquared } from './K
 import { AudioSource } from './AudioSource';
 import { Rect } from './Rect';
 import { Vector } from './Vector';
-import { Point } from './Point';
+import { Particle } from './Particle';
 import { Animation } from './Animation';
 import { Circle } from './Circle';
 

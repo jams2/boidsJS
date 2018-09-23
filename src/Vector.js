@@ -17,6 +17,14 @@ class Vector {
         }
     }
 
+    static dot(v1, v2) {
+        return v1.x * v2.x + v1.y * v2.y;
+    }
+
+    dot(other) {
+        return this.x * other.x + this.y * other.y;
+    }
+
     static add(v1, v2) {
         return new Vector(
             v1.x + v2.x,
