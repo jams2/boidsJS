@@ -100,19 +100,23 @@ class Animation {
         this.updateFps(now);
         const tree = new KdTree();
         this.particles.forEach(function(particle){
+            particle.nearest = null;
             tree.insert(particle);
         });
 
         // clear the canvas
-        //this.particle_ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        //this.particle_ctx.fillRect(0, 0, this.width, this.height);
-        this.particle_ctx.clearRect(0, 0, this.width, this.height);
+        this.particle_ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        this.particle_ctx.fillRect(0, 0, this.width, this.height);
+        //this.particle_ctx.clearRect(0, 0, this.width, this.height);
 
         // main anim loop
         this.particle_ctx.fillStyle = 'rgb(255, 50, 50)';
         this.particle_ctx.beginPath();
         this.particles.forEach(particle=>{
-            particle.nearest = tree.nearestNeighbour(particle);
+            if (particle.nearest === null) {
+                particle.nearest = tree.nearestNeighbour(particle);
+                particle.nearest.nearest = particle
+            }
             this.drawParticle(particle, this.particle_ctx, 50);
             const neighbours = particle.getNeighbours(tree);
             if (neighbours !== null && particle !== undefined) {
