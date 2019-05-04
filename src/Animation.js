@@ -1,6 +1,7 @@
 import {
     START_COUNT,
     PROXIMITY,
+    PARTICLE_CONTEXT_FILLSTYLE,
 } from './constants';
 import { Particle } from './Particle';
 import { KdTree } from './KdTree';
@@ -12,14 +13,12 @@ class Animation {
         this.fpsDisplay = document.querySelector('#fps');
         this.canvasWidth = particleContextContainer.clientWidth;
         this.canvasHeight = particleContextContainer.clientHeight;
-        const particleCanvas = this.createCanvas('particle-canvas');
-        const lineCanvas = this.createCanvas('line-canvas');
-        particleContextContainer.appendChild(particleCanvas);
-        lineContextContainer.appendChild(lineCanvas);
-        this.particleContext = particleCanvas.getContext('2d');
-        this.particleContext.fillStyle = 'rgb(200, 255, 255)';
-        this.particles = [];
-        this.generateParticles(START_COUNT, Animation.gaussianRandomParticle);
+        this.particleContext = this.createAnimationContext(
+            particleContextContainer,
+            PARTICLE_CONTEXT_FILLSTYLE
+        );
+        this.lineContext = this.createAnimationContext(lineContextContainer);
+        this.particles = this.generateParticles(START_COUNT, Animation.gaussianRandomParticle);
         this.doAnim = true;
         this.times = [];
         this.fps = 0;
@@ -30,20 +29,31 @@ class Animation {
         });
     }
 
-    createCanvas(id) {
+    createAnimationContext(container, fillStyle) {
+        const canvas = this.createCanvas();
+        container.appendChild(canvas);
+        const animationContext = canvas.getContext('2d');
+        if (fillStyle !== null && fillStyle !== undefined) {
+            animationContext.fillStyle = fillStyle;
+        }
+        return animationContext;
+    }
+
+    createCanvas() {
         const canvas = document.createElement('canvas');
-        canvas.id = id;
         canvas.width = this.canvasWidth;
         canvas.height = this.canvasHeight;
-        return canvas
+        return canvas;
     }
 
     generateParticles(count, particleFactory) {
+        const particles = [];
         for (let _ = 0; _ < count; _ += 1) {
-            this.particles.push(
-                particleFactory(this.canvasWidth, this.canvasHeight, this.particles.length),
+            particles.push(
+                particleFactory(this.canvasWidth, this.canvasHeight, particles.length),
             );
         }
+        return particles;
     }
 
     static gaussianRandomParticle(containerWidth, containerHeight, particleId) {
