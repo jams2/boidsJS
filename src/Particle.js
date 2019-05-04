@@ -17,6 +17,29 @@ class Particle {
         this.nearest = null;
     }
 
+    getNearestNeighbour(tree) {
+        return tree.nearestNeighbour(this);
+    }
+
+    setNearestNeighbour(otherParticle) {
+        this.nearest = otherParticle;
+    }
+
+    alignWithNeighbours(neighbours) {
+        this.applyAvgPosition(neighbours);
+        this.applyAvgVelocity(neighbours);
+    }
+
+    applyAvgPosition(neighbours) {
+        const avgPosition = this.getAvgPosition(neighbours);
+        this.applyForce(avgPosition);
+    }
+
+    applyAvgVelocity(neighbours) {
+        const avgVelocity = this.getAvgVelocity(neighbours);
+        this.applyForce(avgVelocity);
+    }
+
     distToNearest() {
         const dir = Vector.subtract(this.position, this.nearest.position);
         const length = dir.length();

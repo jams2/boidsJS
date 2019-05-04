@@ -93,7 +93,7 @@ class Animation {
         this.particleContext.fillStyle = PARTICLE_FILLSTYLE;
         this.particleContext.beginPath();
         this.particles.forEach((particle) => {
-            this.getNearestNeighbourIfNull(particle, tree);
+            this.setNearestNeighboursIfNull(particle, tree);
             this.alignParticleWithNeighbours(particle, tree);
             particle.avoidCollision();
             particle.collide();
@@ -118,23 +118,19 @@ class Animation {
     clearCanvas() {
         this.particleContext.fillStyle = PARTICLE_CONTEXT_FILLSTYLE;
         this.particleContext.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-        // this.particleContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
 
-    getNearestNeighbourIfNull(particle, tree) {
+    setNearestNeighboursIfNull(particle, tree) {
         if (particle.nearest === null) {
-            particle.nearest = tree.nearestNeighbour(particle);
-            particle.nearest.nearest = particle;
+            particle.setNearestNeighbour(particle.getNearestNeighbour(tree));
+            particle.nearest.setNearestNeighbour(particle);
         }
     }
 
     alignParticleWithNeighbours(particle, tree) {
         const neighbours = particle.getNeighbours(tree);
         if (neighbours !== null && particle !== undefined) {
-            const avgPosition = particle.getAvgPosition(neighbours);
-            particle.applyForce(avgPosition);
-            const avgVelocity = particle.getAvgVelocity(neighbours);
-            particle.applyForce(avgVelocity);
+            particle.alignWithNeighbours(neighbours);
         }
     }
 
