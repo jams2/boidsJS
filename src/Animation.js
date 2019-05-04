@@ -2,6 +2,7 @@ import {
     START_COUNT,
     PROXIMITY,
     PARTICLE_CONTEXT_FILLSTYLE,
+    PARTICLE_FILLSTYLE,
 } from './constants';
 import { Particle } from './Particle';
 import { KdTree } from './KdTree';
@@ -16,7 +17,6 @@ class Animation {
         this.canvasHeight = particleContextContainer.clientHeight;
         this.particleContext = this.createAnimationContext(
             particleContextContainer,
-            PARTICLE_CONTEXT_FILLSTYLE
         );
         this.lineContext = this.createAnimationContext(lineContextContainer);
         this.particles = this.generateParticles(START_COUNT, Animation.gaussianRandomParticle);
@@ -63,10 +63,10 @@ class Animation {
         );
     }
 
-    static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit + 1)); }
+    static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit+1)); }
 
-    // gaussian random generator from https://stackoverflow.com/a/39187274
     static gaussianRand() {
+        // https://stackoverflow.com/a/39187274
         let rand = 0;
         for (let i = 0; i < 6; i += 1) { rand += Math.random(); }
         return rand / 6;
@@ -85,37 +85,22 @@ class Animation {
     animate() {
         this.fpsDisplay.updateFps(performance.now());
         const tree = new KdTree();
-        this.particles.forEach((particle) => {
-            particle.nearest = null;
-            tree.insert(particle);
-        });
+        this.populateNewTree(tree);
 
-        // clear the canvas
-        this.particleContext.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        this.particleContext.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-        // this.particleContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+        this.clearCanvas();
 
         // main anim loop
-        this.particleContext.fillStyle = 'rgb(255, 50, 50)';
+        this.particleContext.fillStyle = PARTICLE_FILLSTYLE;
         this.particleContext.beginPath();
         this.particles.forEach((particle) => {
-            if (particle.nearest === null) {
-                particle.nearest = tree.nearestNeighbour(particle);
-                particle.nearest.nearest = particle;
-            }
-            Animation.drawParticle(particle, this.particleContext, 50);
-            const neighbours = particle.getNeighbours(tree);
-            if (neighbours !== null && particle !== undefined) {
-                const avgPosition = particle.getAvgPosition(neighbours);
-                particle.applyForce(avgPosition);
-                const avgVelocity = particle.getAvgVelocity(neighbours);
-                particle.applyForce(avgVelocity);
-            }
+            this.getNearestNeighbourIfNull(particle, tree);
+            this.alignParticleWithNeighbours(particle, tree);
             particle.avoidCollision();
             particle.collide();
             particle.applyForce(particle.getResistance());
             this.getBoundaryReflection(particle);
             particle.move();
+            Animation.drawParticle(particle, this.particleContext, 50);
         });
         this.particleContext.fill();
         if (this.doAnim) {
@@ -123,14 +108,34 @@ class Animation {
         }
     }
 
-    static getNeighbouringParticles(particle, tree) {
-        const pos = particle.position;
-        const rect = new Rect(
-            pos.x - PROXIMITY, pos.y - PROXIMITY,
-            pos.x + PROXIMITY, pos.y + PROXIMITY,
-        );
-        const neighbours = tree.range(rect);
-        return neighbours;
+    populateNewTree(tree) {
+        this.particles.forEach((particle) => {
+            particle.nearest = null;
+            tree.insert(particle);
+        });
+    }
+
+    clearCanvas() {
+        this.particleContext.fillStyle = PARTICLE_CONTEXT_FILLSTYLE;
+        this.particleContext.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+        // this.particleContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+    }
+
+    getNearestNeighbourIfNull(particle, tree) {
+        if (particle.nearest === null) {
+            particle.nearest = tree.nearestNeighbour(particle);
+            particle.nearest.nearest = particle;
+        }
+    }
+
+    alignParticleWithNeighbours(particle, tree) {
+        const neighbours = particle.getNeighbours(tree);
+        if (neighbours !== null && particle !== undefined) {
+            const avgPosition = particle.getAvgPosition(neighbours);
+            particle.applyForce(avgPosition);
+            const avgVelocity = particle.getAvgVelocity(neighbours);
+            particle.applyForce(avgVelocity);
+        }
     }
 
     getBoundaryReflection(particle) {
