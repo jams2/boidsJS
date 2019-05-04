@@ -1,8 +1,10 @@
 import {
-    MOUSE_RADIUS, MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C
+    MOUSE_RADIUS,
+    START_COUNT,
+    PROXIMITY,
 } from './constants';
 import { Particle } from './Particle';
-import { Node, KdTree, equalParticles, comparePosition, distanceSquared } from './KdTree';
+import { KdTree } from './KdTree';
 import { Vector } from './Vector';
 import { Rect } from './Rect';
 import { Circle } from './Circle';
