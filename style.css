@@ -58,7 +58,7 @@ table {
 	border-collapse: collapse;
 	border-spacing: 0;
 }
-.container0 {
+.anim-context__container-first {
   position: absolute;
   z-index: 0;
   width: 100vw;
@@ -66,7 +66,7 @@ table {
   color: white;
   font-size: 20px;
 }
-.container1 {
+.anim-context__container-last {
   position: absolute;
   z-index: 1;
   width: 100vw;

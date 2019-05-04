@@ -9,8 +9,8 @@ import { Circle } from './Circle';
 
 
 window.addEventListener("load", function() {
-    const container0 = document.querySelector('#container0');
-    const container1 = document.querySelector('#container1');
-    const anim = new Animation(container0, container1);
+    const particleContextContainer = document.querySelector('#particle-container');
+    const lineContextContainer = document.querySelector('#line-container');
+    const anim = new Animation(particleContextContainer, lineContextContainer);
     anim.animate();
 });

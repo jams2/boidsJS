@@ -9,16 +9,18 @@ import { Circle } from './Circle';
 
 
 class Animation {
-    constructor(container0, container1) {
+    constructor(particleContextContainer, lineContextContainer) {
+        const particleContainer = particleContextContainer;
+        const lineContainer = lineContextContainer;
         this.fpsDisplay = document.querySelector('#fps');
         this.particles = [];
-        this.width = document.querySelector('.container0').clientWidth;
-        this.height = document.querySelector('.container0').clientHeight;
-        this.center = {'x': Math.floor(this.width/2), 'y': Math.floor(this.height/2)};
-        this.center = this.newParticle(this.center.x, this.center.y);
+        this.width = particleContainer.clientWidth;
+        this.height = particleContainer.clientHeight;
+        const centerPoint = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
+        this.center = this.newParticle(centerPoint.x, centerPoint.y);
         this.centerOfMass = this.newParticle(this.center.x, this.center.y);
-        container0.innerHTML = `<canvas id="particle_ctx" width="${this.width}" height="${this.height}"></canvas>`;
-        container1.innerHTML = `<canvas id="line_ctx" width="${this.width}" height="${this.height}"></canvas>`;
+        particleContainer.innerHTML = `<canvas id="particle_ctx" width="${this.width}" height="${this.height}"></canvas>`;
+        lineContainer.innerHTML = `<canvas id="line_ctx" width="${this.width}" height="${this.height}"></canvas>`;
         this.canvas0 = document.querySelector('#particle_ctx');
         this.canvas1 = document.querySelector('#line_ctx');
         this.line_ctx = this.canvas0.getContext('2d');
