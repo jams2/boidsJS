@@ -1,70 +1,47 @@
 import {
-    MOUSE_RADIUS,
     START_COUNT,
     PROXIMITY,
 } from './constants';
 import { Particle } from './Particle';
 import { KdTree } from './KdTree';
-import { Vector } from './Vector';
 import { Rect } from './Rect';
-import { Circle } from './Circle';
 
 
 class Animation {
     constructor(particleContextContainer, lineContextContainer) {
-        const particleContainer = particleContextContainer;
-        const lineContainer = lineContextContainer;
         this.fpsDisplay = document.querySelector('#fps');
+        this.canvasWidth = particleContextContainer.clientWidth;
+        this.canvasHeight = particleContextContainer.clientHeight;
+        const particleCanvas = this.createCanvas('particle-canvas');
+        const lineCanvas = this.createCanvas('line-canvas');
+        particleContextContainer.appendChild(particleCanvas);
+        lineContextContainer.appendChild(lineCanvas);
+        this.particleContext = particleCanvas.getContext('2d');
+        this.particleContext.fillStyle = 'rgb(200, 255, 255)';
         this.particles = [];
-        this.width = particleContainer.clientWidth;
-        this.height = particleContainer.clientHeight;
-        const centerPoint = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
-        this.center = this.newParticle(centerPoint.x, centerPoint.y);
-        this.centerOfMass = this.newParticle(this.center.x, this.center.y);
-        particleContainer.innerHTML = `<canvas id="particle_ctx" width="${this.width}" height="${this.height}"></canvas>`;
-        lineContainer.innerHTML = `<canvas id="line_ctx" width="${this.width}" height="${this.height}"></canvas>`;
-        this.canvas0 = document.querySelector('#particle_ctx');
-        this.canvas1 = document.querySelector('#line_ctx');
-        this.line_ctx = this.canvas0.getContext('2d');
-        this.particle_ctx = this.canvas1.getContext('2d');
-        this.particle_ctx.fillStyle = 'rgb(200, 255, 255)';
         this.generateParticles(START_COUNT, Animation.gaussianRandomParticle);
-        this.canvas1.addEventListener('click', elt => this.ParticleFromClick(elt));
         this.doAnim = true;
-        this.mouseX = null;
-        this.mouseY = null;
-        this.circle = null;
         this.times = [];
         this.fps = 0;
-        document.querySelector('#stop').addEventListener('click', () => {
+        document.querySelector('#stop').addEventListener('click', (event) => {
+            event.preventDefault();
             this.doAnim = !this.doAnim;
             if (this.doAnim) this.animate();
         });
     }
 
-    handleMouseMove(event) {
-        this.mouseX = event.clientX;
-        this.mouseY = event.clientY;
-        if (this.circle === null || this.circle === undefined) {
-            this.circle = new Circle(this.mouseX, this.mouseY, MOUSE_RADIUS);
-        } else {
-            this.circle.update(this.mouseX, this.mouseY);
-        }
-    }
-
-    newParticle(x, y) {
-        // particles.length as id
-        return new Particle(x, y, this.particles.length);
-    }
-
-    ParticleFromClick(elt) {
-        this.particles.push(this.newParticle(elt.clientX, elt.clientY));
+    createCanvas(id) {
+        const canvas = document.createElement('canvas');
+        canvas.id = id;
+        canvas.width = this.canvasWidth;
+        canvas.height = this.canvasHeight;
+        return canvas
     }
 
     generateParticles(count, particleFactory) {
         for (let _ = 0; _ < count; _ += 1) {
             this.particles.push(
-                particleFactory(this.width, this.height, this.particles.length),
+                particleFactory(this.canvasWidth, this.canvasHeight, this.particles.length),
             );
         }
     }
@@ -116,19 +93,19 @@ class Animation {
         });
 
         // clear the canvas
-        this.particle_ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        this.particle_ctx.fillRect(0, 0, this.width, this.height);
-        // this.particle_ctx.clearRect(0, 0, this.width, this.height);
+        this.particleContext.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        this.particleContext.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+        // this.particleContext.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
 
         // main anim loop
-        this.particle_ctx.fillStyle = 'rgb(255, 50, 50)';
-        this.particle_ctx.beginPath();
+        this.particleContext.fillStyle = 'rgb(255, 50, 50)';
+        this.particleContext.beginPath();
         this.particles.forEach((particle) => {
             if (particle.nearest === null) {
                 particle.nearest = tree.nearestNeighbour(particle);
                 particle.nearest.nearest = particle;
             }
-            Animation.drawParticle(particle, this.particle_ctx, 50);
+            Animation.drawParticle(particle, this.particleContext, 50);
             const neighbours = particle.getNeighbours(tree);
             if (neighbours !== null && particle !== undefined) {
                 const avgPosition = particle.getAvgPosition(neighbours);
@@ -142,21 +119,7 @@ class Animation {
             this.getBoundaryReflection(particle);
             particle.move();
         });
-
-        if (this.circle !== null) {
-            const particlesNearMouse = tree.range(this.circle.boundingRect);
-            if (particlesNearMouse) {
-                const len = particlesNearMouse.length;
-                const center = new Vector(this.mouseX, this.mouseY);
-                for (let i = 0; i < len; i += 1) {
-                    const particle = this.particles[i];
-                    if (this.circle.contains(particle)) {
-                        particle.attractTo(center);
-                    }
-                }
-            }
-        }
-        this.particle_ctx.fill();
+        this.particleContext.fill();
         if (this.doAnim) {
             window.requestAnimationFrame(() => this.animate());
         }
@@ -175,13 +138,13 @@ class Animation {
     getBoundaryReflection(particle) {
         const pos = particle.position;
         if (pos.x < 0) {
-            pos.x = this.width;
-        } else if (pos.x > this.width) {
+            pos.x = this.canvasWidth;
+        } else if (pos.x > this.canvasWidth) {
             pos.x = 0;
         }
         if (pos.y < 0) {
-            pos.y = this.height;
-        } else if (pos.y > this.height) {
+            pos.y = this.canvasHeight;
+        } else if (pos.y > this.canvasHeight) {
             pos.y = 0;
         }
     }
@@ -199,10 +162,6 @@ class Animation {
         context.stroke();
         context.strokeStyle = 'rgb(200, 255, 255)';
     }
-}
-
-function randInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + 1;
 }
 
 
