@@ -96,7 +96,7 @@ class Animation {
             this.setNearestNeighboursIfNull(particle, tree);
             this.alignParticleWithNeighbours(particle, tree);
             particle.avoidCollision();
-            particle.collide();
+            particle.performCollision();
             particle.applyForce(particle.getResistance());
             this.getBoundaryReflection(particle);
             particle.move();

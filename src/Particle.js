@@ -1,8 +1,13 @@
 import { Vector } from './Vector';
 import { Rect } from './Rect';
 import {
-    FLOCK_POSITION_SCALAR, MAX_SPEED, MIN_SPEED, START_COUNT, PROXIMITY, G, C,
-    COLLISION, FLOCK_VELOCITY_SCALAR, MOUSE_REPEL
+    FLOCK_POSITION_SCALAR,
+    MAX_SPEED,
+    PROXIMITY,
+    G,
+    C,
+    COLLISION,
+    MOUSE_REPEL,
 } from './constants';
 
 
@@ -60,15 +65,12 @@ class Particle {
     angleInRadiansFrom(that) {
         return Math.atan2(
             this.position.y - that.position.y,
-            this.position.x - that.position.x
+            this.position.x - that.position.x,
         );
     }
 
-    collide() {
-        if (this.nearest === null) {
-            return;
-        }
-        else if (this.distSquaredTo(this.nearest) <= 20) {
+    performCollision() {
+        if (this.nearest !== null && this.distSquaredTo(this.nearest) <= 20) {
             const tmp = this.nearest.velocity;
             this.nearest.velocity = this.velocity;
             this.velocity = tmp;
@@ -79,9 +81,7 @@ class Particle {
         if (this.distToNearest() < COLLISION) {
             const delta = Vector.subtract(
                 new Vector(0, 0),
-                Vector.subtract(
-                    this.nearest.position, this.position
-                )
+                Vector.subtract(this.nearest.position, this.position),
             );
             delta.scale(0.75);
             this.applyForce(delta);
@@ -128,22 +128,23 @@ class Particle {
         else if (this.position.y > that.position.y) return 1;
         else if (this.position.x < that.position.x) return -1;
         else if (this.position.x > that.position.x) return 1;
-        else return 0;
+        return 0;
     }
 
     slopeTo(that) {
-        if (this.position.x == that.position.x &&
-            this.position.y == that.position.y)
-            return -Infinity;
-        else if (this.position.y == that.position.y) return 0.0;
-        else if (this.position.x == that.position.x) return Infinity;
-        else return (that.position.y - this.position.y) /
-            (that.position.x - this.position.x);
+        if (this.positionEquals(that)) return -Infinity;
+        else if (this.position.y === that.position.y) return 0.0;
+        else if (this.position.x === that.position.x) return Infinity;
+        return (that.position.y - this.position.y) / (that.position.x - this.position.x);
+    }
+
+    positionEquals(that) {
+        return this.position.x === that.position.x && this.position.y === that.position.y;
     }
 
     getFlockVector(range) {
         if (!range.avgPos || !range.avgVel) {
-            return new Vector(0, 0)
+            return new Vector(0, 0);
         }
         range.avgPos.divideBy(100);
         range.avgPos.scale(FLOCK_POSITION_SCALAR);
@@ -186,8 +187,8 @@ class Particle {
     getNeighbours(tree) {
         const rect = new Rect(
             this.position.x - PROXIMITY, this.position.y - PROXIMITY,
-            this.position.x + PROXIMITY, this.position.y + PROXIMITY
-        )
+            this.position.x + PROXIMITY, this.position.y + PROXIMITY,
+        );
         const neighbours = tree.range(rect);
         if (neighbours.length < 2) {
             return null;
@@ -206,7 +207,6 @@ class Particle {
     getAvgVelocity(neighbours) {
         const avgVelocity = this.getVectorMean(neighbours, 'velocity');
         const dir = Vector.subtract(avgVelocity, this.velocity);
-        dir.normalize;
         dir.scale(0.5);
         return dir;
     }
@@ -214,7 +214,7 @@ class Particle {
     getVectorMean(vectors, property) {
         const len = vectors.length;
         const sumVectors = new Vector(0, 0);
-        for (let i = 0; i < len; i++) {
+        for (let i = 0; i < len; i += 1) {
             if (vectors[i].id === this.id) {
                 continue;
             }
