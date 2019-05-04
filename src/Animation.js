@@ -28,15 +28,15 @@ class Animation {
         this.line_ctx = this.canvas0.getContext('2d');
         this.particle_ctx = this.canvas1.getContext('2d');
         this.particle_ctx.fillStyle = 'rgb(200, 255, 255)';
-        this.generateParticles(START_COUNT, this.gaussianRandomParticle);
-        this.canvas1.addEventListener('click', (elt)=> this.ParticleFromClick(elt));
+        this.generateParticles(START_COUNT, Animation.gaussianRandomParticle);
+        this.canvas1.addEventListener('click', elt => this.ParticleFromClick(elt));
         this.doAnim = true;
         this.mouseX = null;
         this.mouseY = null;
         this.circle = null;
         this.times = [];
         this.fps = 0;
-        document.querySelector('#stop').addEventListener('click', ()=> {
+        document.querySelector('#stop').addEventListener('click', () => {
             this.doAnim = !this.doAnim;
             if (this.doAnim) this.animate();
         });
@@ -47,30 +47,34 @@ class Animation {
         this.mouseY = event.clientY;
         if (this.circle === null || this.circle === undefined) {
             this.circle = new Circle(this.mouseX, this.mouseY, MOUSE_RADIUS);
-        }
-        else {
+        } else {
             this.circle.update(this.mouseX, this.mouseY);
         }
     }
 
     newParticle(x, y) {
-        return new Particle(x, y, this.particles.length, this.particle_ctx, this.center, this.width, this.height);
+        // particles.length as id
+        return new Particle(x, y, this.particles.length);
     }
 
     ParticleFromClick(elt) {
         this.particles.push(this.newParticle(elt.clientX, elt.clientY));
     }
 
-    generateParticles(x, func) {
-        let particleFactory = func.bind(this);
-        for (var _ = 0; _ < x; _++) {
-            this.particles.push(particleFactory());
+    generateParticles(count, particleFactory) {
+        for (let _ = 0; _ < count; _++) {
+            this.particles.push(
+                particleFactory(this.width, this.height, this.particles.length),
+            );
         }
     }
 
-    gaussianRandomParticle() {
-        return this.newParticle(Animation.gaussianRandom(this.width),
-                             Animation.gaussianRandom(this.height));
+    static gaussianRandomParticle(containerWidth, containerHeight, particleId) {
+        return new Particle(
+            Animation.gaussianRandom(containerWidth),
+            Animation.gaussianRandom(containerHeight),
+            particleId,
+        );
     }
 
     static gaussianRandom(limit) { return Math.floor(Animation.gaussianRand() * (limit + 1)); }
