@@ -6,11 +6,12 @@ import {
 import { Particle } from './Particle';
 import { KdTree } from './KdTree';
 import { Rect } from './Rect';
+import FPSDisplay from './FPSDisplay';
 
 
 class Animation {
     constructor(particleContextContainer, lineContextContainer) {
-        this.fpsDisplay = document.querySelector('#fps');
+        this.fpsDisplay = new FPSDisplay(document.querySelector('#fps'));
         this.canvasWidth = particleContextContainer.clientWidth;
         this.canvasHeight = particleContextContainer.clientHeight;
         this.particleContext = this.createAnimationContext(
@@ -20,8 +21,6 @@ class Animation {
         this.lineContext = this.createAnimationContext(lineContextContainer);
         this.particles = this.generateParticles(START_COUNT, Animation.gaussianRandomParticle);
         this.doAnim = true;
-        this.times = [];
-        this.fps = 0;
         document.querySelector('#stop').addEventListener('click', (event) => {
             event.preventDefault();
             this.doAnim = !this.doAnim;
@@ -83,19 +82,8 @@ class Animation {
 
     static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
 
-    updateFps(now) {
-        // https://stackoverflow.com/a/48036361
-        while (this.times.length > 0 && this.times[0] <= now - 1000) {
-            this.times.shift();
-        }
-        this.times.push(now);
-        this.fps = this.times.length;
-        this.fpsDisplay.innerHTML = this.fps;
-    }
-
     animate() {
-        const now = performance.now();
-        this.updateFps(now);
+        this.fpsDisplay.updateFps(performance.now());
         const tree = new KdTree();
         this.particles.forEach((particle) => {
             particle.nearest = null;
