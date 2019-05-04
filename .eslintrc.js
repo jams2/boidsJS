@@ -17,5 +17,7 @@ module.exports = {
             "error",
             4
         ],
+        "space-infix-ops": "off",
+        "no-param-reassign": "off",
     }
 };
