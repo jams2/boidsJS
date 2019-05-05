@@ -7,12 +7,12 @@ import {
 import { Particle } from './Particle';
 import { KdTree } from './KdTree';
 import { Rect } from './Rect';
-import FPSDisplay from './FPSDisplay';
+import StatDisplay from './StatDisplay';
 
 
 class Animation {
     constructor(particleContextContainer, lineContextContainer) {
-        this.fpsDisplay = new FPSDisplay(document.querySelector('#fps'));
+        this.statDisplay = new StatDisplay(document.querySelector('#fps'));
         this.canvasWidth = particleContextContainer.clientWidth;
         this.canvasHeight = particleContextContainer.clientHeight;
         this.particleContext = this.createAnimationContext(
@@ -83,7 +83,7 @@ class Animation {
     static uniformRandom(limit) { return Math.floor(Math.random() * limit); }
 
     animate() {
-        this.fpsDisplay.updateFps(performance.now());
+        this.statDisplay.updateFps(performance.now());
         const tree = new KdTree();
         this.populateNewTree(tree);
 
