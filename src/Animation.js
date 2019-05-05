@@ -47,10 +47,12 @@ class Animation {
 
     generateParticles(count, particleFactory) {
         const particles = [];
-        for (let _ = 0; _ < count; _ += 1) {
+        let particleCounter = 0;
+        while (particleCounter < count) {
             particles.push(
                 particleFactory(this.canvasWidth, this.canvasHeight, particles.length),
             );
+            particleCounter += 1;
         }
         return particles;
     }
@@ -92,16 +94,18 @@ class Animation {
         // main anim loop
         this.particleContext.fillStyle = PARTICLE_FILLSTYLE;
         this.particleContext.beginPath();
-        this.particles.forEach((particle) => {
-            this.setNearestNeighboursIfNull(particle, tree);
-            this.alignParticleWithNeighbours(particle, tree);
-            particle.avoidCollision();
-            particle.performCollision();
-            particle.applyForce(particle.getResistance());
-            this.getBoundaryReflection(particle);
-            particle.move();
-            Animation.drawParticle(particle, this.particleContext, 50);
-        });
+        let i = 0;
+        while (i < this.particles.length) {
+            this.setNearestNeighboursIfNull(this.particles[i], tree);
+            this.alignParticleWithNeighbours(this.particles[i], tree);
+            this.particles[i].avoidCollision();
+            this.particles[i].performCollision();
+            this.particles[i].applyForce(this.particles[i].getResistance());
+            this.getBoundaryReflection(this.particles[i]);
+            this.particles[i].move();
+            Animation.drawParticle(this.particles[i], this.particleContext, 50);
+            i += 1;
+        };
         this.particleContext.fill();
         if (this.doAnim) {
             window.requestAnimationFrame(() => this.animate());
@@ -109,10 +113,12 @@ class Animation {
     }
 
     populateNewTree(tree) {
-        this.particles.forEach((particle) => {
-            particle.nearest = null;
-            tree.insert(particle);
-        });
+        let i = 0;
+        while (i < this.particles.length) {
+            this.particles[i].nearest = null;
+            tree.insert(this.particles[i]);
+            i += 1;
+        };
     }
 
     clearCanvas() {

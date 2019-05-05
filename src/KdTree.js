@@ -117,9 +117,10 @@ class KdTree {
         if (node === null) return;
         let cmp;
         if (rect.contains(node.points[0])) {
-            const len = node.points.length;
-            for (let i = 0; i < len; i++) {
+            let i = 0;
+            while (i < node.points.length) {
                 stack.push(node.points[i]);
+                i += 1;
             }
             cmp = 0;
         }
