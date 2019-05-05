@@ -4,7 +4,8 @@ import {
     PARTICLE_CONTEXT_FILLSTYLE,
     PARTICLE_FILLSTYLE,
 } from './constants';
-import { Particle } from './Particle';
+import Particle from './Particle';
+import RandomWalkParticle from './RandomWalkParticle';
 import { KdTree } from './KdTree';
 import { Rect } from './Rect';
 import StatDisplay from './StatDisplay';
@@ -20,6 +21,11 @@ class Animation {
         );
         this.lineContext = this.createAnimationContext(lineContextContainer);
         this.particles = this.generateParticles(START_COUNT, Animation.gaussianRandomParticle);
+        this.randomWalker = new RandomWalkParticle(
+            Animation.gaussianRandom(this.canvasWidth),
+            Animation.gaussianRandom(this.canvasHeight),
+            -1,
+        );
         this.doAnim = true;
         document.querySelector('#stop').addEventListener('click', (event) => {
             event.preventDefault();
@@ -95,17 +101,28 @@ class Animation {
         this.particleContext.fillStyle = PARTICLE_FILLSTYLE;
         this.particleContext.beginPath();
         let i = 0;
+        this.setNearestNeighboursIfNull(this.randomWalker, tree);
+        this.randomWalker.move();
+        this.reflectFromBoundary(this.randomWalker);
         while (i < this.particles.length) {
             this.setNearestNeighboursIfNull(this.particles[i], tree);
             this.alignParticleWithNeighbours(this.particles[i], tree);
             this.particles[i].avoidCollision();
             this.particles[i].performCollision();
             this.particles[i].applyForce(this.particles[i].getResistance());
-            this.getBoundaryReflection(this.particles[i]);
+            this.translateIfOutOfBounds(this.particles[i]);
             this.particles[i].move();
-            Animation.drawParticle(this.particles[i], this.particleContext, 50);
+            Animation.drawParticle(this.particles[i], this.particleContext);
             i += 1;
         };
+        const walkerNeighbours = this.randomWalker.getNeighbours(tree);
+        if (walkerNeighbours != null) {
+            i = 0;
+            while (i < walkerNeighbours.length) {
+                walkerNeighbours[i].attractTo(this.randomWalker.position);
+                i += 1
+            }
+        }
         this.particleContext.fill();
         if (this.doAnim) {
             window.requestAnimationFrame(() => this.animate());
@@ -119,6 +136,7 @@ class Animation {
             tree.insert(this.particles[i]);
             i += 1;
         };
+        tree.insert(this.randomWalker);
     }
 
     clearCanvas() {
@@ -140,7 +158,21 @@ class Animation {
         }
     }
 
-    getBoundaryReflection(particle) {
+    translateIfOutOfBounds(particle) {
+        const pos = particle.position;
+        if (pos.x < 0) {
+            pos.x = this.canvasWidth;
+        } else if (pos.x > this.canvasWidth) {
+            pos.x = 0;
+        }
+        if (pos.y < 0) {
+            pos.y = this.canvasHeight;
+        } else if (pos.y > this.canvasHeight) {
+            pos.y = 0;
+        }
+    }
+
+    reflectFromBoundary(particle) {
         const pos = particle.position;
         if (pos.x < 0) {
             pos.x = this.canvasWidth;

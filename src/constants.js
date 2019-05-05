@@ -1,14 +1,14 @@
 const MAX_SPEED = 7;
 const MIN_SPEED = 0.1;
-const START_COUNT = 1200;
-const PROXIMITY = 58;
+const START_COUNT = 600;
+const PROXIMITY = 80;
 const G = 43;
 const C = 0.001;
 const FLOCK_POSITION_SCALAR = 3;
 const COLLISION = 12;
 const FLOCK_VELOCITY_SCALAR = 0.05;
 const MOUSE_RADIUS = 150;
-const MOUSE_REPEL = 40;
+const MOUSE_REPEL = 4;
 const PARTICLE_CONTEXT_FILLSTYLE = 'rgba(0, 0, 0, 0.75)';
 const PARTICLE_FILLSTYLE = 'rgb(200, 255, 255)';
 

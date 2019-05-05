@@ -15,7 +15,10 @@ class Particle {
     constructor(x, y, id) {
         this.mass = 3;
         this.position = new Vector(x, y);
-        this.velocity = new Vector(Math.floor(Math.random() * 6), Math.floor(Math.random() * 6));
+        this.velocity = new Vector(
+            Math.floor(Math.random() * MAX_SPEED),
+            Math.floor(Math.random() * MAX_SPEED),
+        );
         this.lastPos = null;
         this.accel = new Vector(0.0001, 0.0001);
         this.id = id;
@@ -226,4 +229,4 @@ class Particle {
 }
 
 
-export { Particle };
+export default Particle;
