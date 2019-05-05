@@ -23,9 +23,9 @@ function distanceSquared(p, q) {
 
 
 class Node {
-    constructor(point, _parent) {
+    constructor(point, parentNode) {
         this.point = [point];
-        this._parent = _parent;
+        this.parentNode = parentNode;
         this.lb = null;
         this.rt = null;
     }
@@ -46,6 +46,7 @@ class KdTree {
         ******************************************************************************************/
         if (point === null || point === undefined) throw 'Invalid argument';
         if (Array.isArray(point)) {
+            console.log('is array');
             point.forEach(p=>{
                 if (!p instanceof Point || p === null) throw 'Invalid argument';
                 this.rootNode = this.put(this.rootNode, p, null, true);
@@ -56,18 +57,18 @@ class KdTree {
         }
     }
 
-    put(node, point, _parent, isVertical) {
+    put(node, point, parentNode, isVertical) {
         /******************************************************************************************
          *  Insert point into KdTree
          *  node (type: Node) - current node to compare new point with
          *  point (type: point) - new point to insert
-         *  _parent (type: Node) - parent node of current node
+         *  parentNode (type: Node) - parent node of current node
          *  isVertical (type: Boolean) - whether we are dividing h or v at this
          *      recursive level, reversed on each successive call.
          *****************************************************************************************/
         if (node === null) {
             this.size++;
-            return new Node(point, _parent);
+            return new Node(point, parentNode);
         }
         if (equalPoints(point, node.point[0])) {
             node.point.push(point);

@@ -1,7 +1,7 @@
 class Node {
-    constructor(point, _parent) {
-        this.point = [point];
-        this._parent = _parent;
+    constructor(newPoint, parentNode) {
+        this.points = [newPoint];
+        this.parentNode = parentNode;
         this.lb = null;
         this.rt = null;
     }
@@ -12,67 +12,42 @@ class KdTree {
     constructor() {
         this.size = 0;
         this.rootNode = null;
-        this.collisions = 0;
     }
 
     insert(point) {
-        /******************************************************************************************
-        *   Public interface to put
-        *   Takes a Point or array of Points.
-        ******************************************************************************************/
+        // Public interface to KdTree.put
         if (point === null || point === undefined) throw 'Invalid argument';
-        if (Array.isArray(point)) {
-            point.forEach(p=>{
-                if (!p instanceof Point || p === null) throw 'Invalid argument';
-                this.rootNode = this.put(this.rootNode, p, null, true);
-            });
-        }
-        else {
-            this.rootNode = this.put(this.rootNode, point, null, true);
-        }
+        this.rootNode = this.put(this.rootNode, point, null, true);
     }
 
-    put(node, point, _parent, isVertical) {
-        /******************************************************************************************
-         *  Insert point into KdTree
-         *  node (type: Node) - current node to compare new point with
-         *  point (type: point) - new point to insert
-         *  _parent (type: Node) - parent node of current node
-         *  isVertical (type: Boolean) - whether we are dividing h or v at this
-         *      recursive level, reversed on each successive call.
-         *****************************************************************************************/
-        if (node === null) {
+    put(currentNode, newPoint, parentNode, isVertical) {
+        if (currentNode === null) {
             this.size++;
-            return new Node(point, _parent);
+            return new Node(newPoint, parentNode);
         }
-        if (equalPoints(point, node.point[0])) {
-            node.point.push(point);
-            this.collisions++;
-            return node;
+        if (equalPoints(newPoint, currentNode.points[0])) {
+            currentNode.points.push(newPoint);
+            return currentNode;
         }
         let cmp;
         if (isVertical) {
-            cmp = comparePosition(point.position.x, node.point[0].position.x);
-        }
-        else {
-            cmp = comparePosition(point.position.y, node.point[0].position.y);
+            cmp = comparePosition(newPoint.position.x, currentNode.points[0].position.x);
+        } else {
+            cmp = comparePosition(newPoint.position.y, currentNode.points[0].position.y);
         }
         if (cmp === -1) {
-            node.lb = this.put(node.lb, point, node, !isVertical);
+            currentNode.lb = this.put(currentNode.lb, newPoint, currentNode, !isVertical);
+        } else {
+            currentNode.rt = this.put(currentNode.rt, newPoint, currentNode, !isVertical);
         }
-        else {
-            node.rt = this.put(node.rt, point, node, !isVertical);
-        }
-        return node;
+        return currentNode;
     }
 
     nearestNeighbour(query) {
-        /******************************************************************************************
-         *  Public interface for getNearest.
-         *****************************************************************************************/
+        // Public interface for getNearest.
         if (query === null || query === undefined) throw 'Invalid argument';
         if (this.size < 2) return null;
-        return this.getNearest(this.rootNode.point[0], query, this.rootNode, true);
+        return this.getNearest(this.rootNode.points[0], query, this.rootNode, true);
     }
 
     getNearest(nearest, queryPoint, node, isVertical) {
@@ -90,16 +65,16 @@ class KdTree {
         if (node === null) {
             return nearest;
         }
-        if (comparePosition(distanceSquared(node.point[0], queryPoint),
+        if (comparePosition(distanceSquared(node.points[0], queryPoint),
                 distanceSquared(nearest, queryPoint)) < 0) {
-            nearest = node.point[0];
+            nearest = node.points[0];
         }
         let cmp;
         if (isVertical) { // take lb branch if node.point is greater than query
-            cmp = comparePosition(node.point[0].position.x, queryPoint.position.x);
+            cmp = comparePosition(node.points[0].position.x, queryPoint.position.x);
         }
         else {
-            cmp = comparePosition(node.point[0].position.y, queryPoint.position.y);
+            cmp = comparePosition(node.points[0].position.y, queryPoint.position.y);
         }
         if (cmp === 1) {
             nearest = this.getNearest(nearest, queryPoint, node.lb, !isVertical);
@@ -108,8 +83,7 @@ class KdTree {
                 this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
                 nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
             }
-        }
-        else {
+        } else {
             nearest = this.getNearest(nearest, queryPoint, node.rt, !isVertical);
             if (comparePosition(distanceSquared(nearest, queryPoint),
                 this.otherBranchDistSquared(queryPoint, node, isVertical)) >= 0) {
@@ -121,8 +95,8 @@ class KdTree {
 
     otherBranchDistSquared(nearest, node, vertical) {
         let distance;
-        if (vertical) distance = Math.abs(node.point[0].position.x - nearest.position.x);
-        else distance = Math.abs(node.point[0].position.y - nearest.position.y);
+        if (vertical) distance = Math.abs(node.points[0].position.x - nearest.position.x);
+        else distance = Math.abs(node.points[0].position.y - nearest.position.y);
         return distance * distance;
     }
 
@@ -142,29 +116,29 @@ class KdTree {
     getRange(node, stack, rect, isVertical) {
         if (node === null) return;
         let cmp;
-        if (rect.contains(node.point[0])) {
-            const len = node.point.length;
+        if (rect.contains(node.points[0])) {
+            const len = node.points.length;
             for (let i = 0; i < len; i++) {
-                stack.push(node.point[i]);
+                stack.push(node.points[i]);
             }
             cmp = 0;
         }
         else if (isVertical) {
-            if (comparePosition(node.point[0].position.x, rect.xmin) >= 0 &&
-                    comparePosition(node.point[0].position.x, rect.xmin) <= 0) {
+            if (comparePosition(node.points[0].position.x, rect.xmin) >= 0 &&
+                    comparePosition(node.points[0].position.x, rect.xmin) <= 0) {
                 cmp = 0;
             }
             else {
-                cmp = (comparePosition(node.point[0].position.x, rect.xmin) < 0) ? 1 : -1;
+                cmp = (comparePosition(node.points[0].position.x, rect.xmin) < 0) ? 1 : -1;
             }
         }
         else {
-            if (comparePosition(node.point[0].position.y, rect.ymin) >= 0 &&
-                    comparePosition(node.point[0].position.y, rect.ymax) <= 0) {
+            if (comparePosition(node.points[0].position.y, rect.ymin) >= 0 &&
+                    comparePosition(node.points[0].position.y, rect.ymax) <= 0) {
                 cmp = 0;
             }
             else {
-                cmp = (comparePosition(node.point[0].position.y, rect.ymin) < 0) ? 1 : -1;
+                cmp = (comparePosition(node.points[0].position.y, rect.ymin) < 0) ? 1 : -1;
             }
         }
         if (cmp === 0) {
