@@ -1,8 +1,8 @@
 class DepthFirstSearch {
     constructor(graph) {
-        this.marked = Array(graph.length).map(() => false);
-        this.componentId = Array(graph.length).map(() => null);
-        this.componentSize = Array(graph.length).map(() => 0);
+        this.marked = Array(graph.length).fill(false);
+        this.componentId = Array(graph.length).fill(null);
+        this.componentSize = Array(graph.length).fill(0);
         this.numComponents = 0;
         for (let vertexIndex = 0; vertexIndex < graph.vertices.length; vertexIndex += 1) {
             if (!this.marked[vertexIndex]) {

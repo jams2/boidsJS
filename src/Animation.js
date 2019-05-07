@@ -9,6 +9,8 @@ import RandomWalkParticle from './RandomWalkParticle';
 import { KdTree } from './KdTree';
 import { Rect } from './Rect';
 import StatDisplay from './StatDisplay';
+import Graph from './Graph';
+import DepthFirstSearch from './DepthFirstSearch';
 
 
 class Animation {
@@ -124,6 +126,7 @@ class Animation {
             }
         }
         this.particleContext.fill();
+        return;
         if (this.doAnim) {
             window.requestAnimationFrame(() => this.animate());
         }
