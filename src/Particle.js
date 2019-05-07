@@ -23,6 +23,8 @@ class Particle {
         this.accel = new Vector(0.0001, 0.0001);
         this.id = id;
         this.nearest = null;
+        this._distToNearest = null;
+        this._distSquaredToNearest = null;
     }
 
     getNearestNeighbour(tree) {
@@ -49,9 +51,23 @@ class Particle {
     }
 
     distToNearest() {
-        const dir = Vector.subtract(this.position, this.nearest.position);
-        const length = dir.length();
-        return length;
+        if (this.nearest === null) {
+            return -Infinity;
+        } else if (this._distToNearest === null) {
+            const dir = Vector.subtract(this.position, this.nearest.position);
+            this._distToNearest = dir.length();
+        }
+        return this._distToNearest;
+    }
+
+    distSquaredToNearest() {
+        if (this.nearest === null) {
+            return -Infinity;
+        } else if (this._distSquaredToNearest === null) {
+            const dir = Vector.subtract(this.position, this.nearest.position);
+            this._distSquaredToNearest = dir.lengthSq();
+        }
+        return this._distSquaredToNearest;
     }
 
     distSquaredTo(other) {

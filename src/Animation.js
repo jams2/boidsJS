@@ -133,6 +133,8 @@ class Animation {
         let i = 0;
         while (i < this.particles.length) {
             this.particles[i].nearest = null;
+            this.particles[i]._distToNearest = null;
+            this.particles[i]._distSquaredToNearest = null;
             tree.insert(this.particles[i]);
             i += 1;
         };
