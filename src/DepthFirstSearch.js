@@ -4,6 +4,7 @@ class DepthFirstSearch {
         this.componentId = Array(graph.length).fill(null);
         this.componentSize = Array(graph.length).fill(0);
         this.numComponents = 0;
+        this.depthFirstSearch = this.depthFirstSearch.bind(this);
         for (let vertexIndex = 0; vertexIndex < graph.vertices.length; vertexIndex += 1) {
             if (!this.marked[vertexIndex]) {
                 this.depthFirstSearch(graph, vertexIndex);
@@ -16,7 +17,6 @@ class DepthFirstSearch {
         this.marked[vertexIndex] = true;
         this.componentId[vertexIndex] = this.numComponents;
         this.componentSize[this.numComponents] += 1;
-        console.log(graph.adjacentVertexIndices[vertexIndex]);
         graph.adjacentVertexIndices[vertexIndex].forEach((adjacentVertexIndex) => {
             if (!this.marked[adjacentVertexIndex]) {
                 this.depthFirstSearch(graph, adjacentVertexIndex);

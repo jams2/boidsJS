@@ -133,6 +133,16 @@ class Animation {
             }
         }
         this.particleContext.fill();
+        console.log('num components: ', depthFirstSearch.numComponents);
+        console.log('num edges: ', graph.countEdges);
+        let comps = {};
+        for (let j = 0; j < depthFirstSearch.componentId.length; j += 1) {
+            if (!comps.hasOwnProperty(j)) {
+                comps[j] = [];
+            }
+            comps[j] = comps[j].concat([depthFirstSearch.componentId[j]]);
+        }
+        console.log(comps);
         return;
         if (this.doAnim) {
             window.requestAnimationFrame(() => this.animate());
