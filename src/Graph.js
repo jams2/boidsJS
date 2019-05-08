@@ -10,11 +10,11 @@ class Graph {
         }
         this.countEdges = 0;
         for (let i = 0; i < this.vertices.length; i += 1) {
-            if (this.vertices[i].distToNearest() <= CONNECTION_THRESHOLD) {
-                const indexOfNearest = this.vertices.indexOf(this.vertices[i].nearest);
-                this.adjacentVertexIndices[i].push(indexOfNearest);
+            this.vertices[i].neighbours.forEach((neighbour) => {
+                const indexOfNeighbour = this.vertices.indexOf(neighbour);
+                this.adjacentVertexIndices[i].push(indexOfNeighbour);
                 this.countEdges += 1;
-            }
+            });
         }
     }
 }

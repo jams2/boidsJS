@@ -25,6 +25,7 @@ class Particle {
         this.nearest = null;
         this._distToNearest = null;
         this._distSquaredToNearest = null;
+        this.neighbours = [];
     }
 
     getNearestNeighbour(tree) {
@@ -212,6 +213,7 @@ class Particle {
         if (neighbours.length < 2) {
             return null;
         }
+        this.neighbours = neighbours;
         return neighbours;
     }
 

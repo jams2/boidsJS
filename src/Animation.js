@@ -10,7 +10,7 @@ import { KdTree } from './KdTree';
 import { Rect } from './Rect';
 import StatDisplay from './StatDisplay';
 import Graph from './Graph';
-import DepthFirstSearch from './DepthFirstSearch';
+import DepthFirstSearch from './DepthFirstSearch'
 
 
 class Animation {
@@ -103,11 +103,11 @@ class Animation {
         this.particleContext.fillStyle = PARTICLE_FILLSTYLE;
         this.particleContext.beginPath();
         let i = 0;
-        this.setNearestNeighboursIfNull(this.randomWalker, tree);
+        this.setNearestNeighbourIfNull(this.randomWalker, tree);
         this.randomWalker.move();
         this.reflectFromBoundary(this.randomWalker);
         while (i < this.particles.length) {
-            this.setNearestNeighboursIfNull(this.particles[i], tree);
+            this.setNearestNeighbourIfNull(this.particles[i], tree);
             this.alignParticleWithNeighbours(this.particles[i], tree);
             this.particles[i].avoidCollision();
             this.particles[i].performCollision();
@@ -117,6 +117,13 @@ class Animation {
             Animation.drawParticle(this.particles[i], this.particleContext);
             i += 1;
         };
+        i = 0;
+        while (i < this.particles.length) {
+            this.particles[i].getNeighbours(tree);
+            i += 1;
+        }
+        const graph = new Graph(this.particles);
+        const depthFirstSearch = new DepthFirstSearch(graph)
         const walkerNeighbours = this.randomWalker.getNeighbours(tree);
         if (walkerNeighbours != null) {
             i = 0;
@@ -138,6 +145,7 @@ class Animation {
             this.particles[i].nearest = null;
             this.particles[i]._distToNearest = null;
             this.particles[i]._distSquaredToNearest = null;
+            this.particles[i].neighbours = [];
             tree.insert(this.particles[i]);
             i += 1;
         };
@@ -149,7 +157,7 @@ class Animation {
         this.particleContext.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
 
-    setNearestNeighboursIfNull(particle, tree) {
+    setNearestNeighbourIfNull(particle, tree) {
         if (particle.nearest === null) {
             particle.setNearestNeighbour(particle.getNearestNeighbour(tree));
             particle.nearest.setNearestNeighbour(particle);
